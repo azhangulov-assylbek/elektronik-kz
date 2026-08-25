@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Корзина — elektronik.kz{% endblock %}
+{% block content %}
+    <h1>Корзина</h1>
+    {% if cart.items.all %}
+        <div class="card">
+            <table>
+                <thead>
+                    <tr><th>Товар</th><th>Цена</th><th>Кол-во</th><th>Сумма</th><th></th></tr>
+                </thead>
+                <tbody>
+                {% for item in cart.items.all %}
+                    <tr>
+                        <td>{{ item.product.name }}</td>
+                        <td>{{ item.product.price }} ₸</td>
+                        <td>
+                            <form action="{% url 'cart:update' item.id %}" method="post" style="display:flex;gap:6px;">
+                                {% csrf_token %}
+                                <input type="number" name="quantity" value="{{ item.quantity }}" min="1" style="width:70px;margin:0;">
+                                <button type="submit" class="btn">Изменить</button>
+                            </form>
+                        </td>
+                        <td>{{ item.subtotal }} ₸</td>
+                        <td>
+                            <form action="{% url 'cart:remove' item.id %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger">Удалить</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <p style="text-align:right;font-weight:bold;font-size:1.1em;margin-top:12px;">Итого: {{ cart.total_price }} ₸</p>
+            <div style="text-align:right;">
+                <a href="{% url 'orders:checkout' %}" class="btn">Оформить заказ</a>
+            </div>
+        </div>
+    {% else %}
+        <p>Корзина пуста. <a href="{% url 'shop:home' %}">Перейти в каталог</a></p>
+    {% endif %}
+{% endblock %}

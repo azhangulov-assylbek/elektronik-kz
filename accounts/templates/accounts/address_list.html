@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Адреса доставки — elektronik.kz{% endblock %}
+{% block content %}
+    <h1>Адреса доставки</h1>
+    <p><a href="{% url 'accounts:address_add' %}" class="btn">+ Добавить адрес</a></p>
+    {% for address in addresses %}
+        <div class="card">
+            <p>{{ address }} {% if address.is_default %}<strong>(по умолчанию)</strong>{% endif %}</p>
+            {% if address.comment %}<p style="color:#666;">{{ address.comment }}</p>{% endif %}
+            <a href="{% url 'accounts:address_edit' address.id %}">Изменить</a> ·
+            <a href="{% url 'accounts:address_delete' address.id %}">Удалить</a>
+        </div>
+    {% empty %}
+        <p>Адресов пока нет.</p>
+    {% endfor %}
+{% endblock %}

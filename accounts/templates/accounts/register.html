@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Регистрация — elektronik.kz{% endblock %}
+{% block content %}
+    <h1>Регистрация</h1>
+    <div class="card" style="max-width:400px;">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn">Зарегистрироваться</button>
+        </form>
+        <p style="margin-top:12px;">Уже есть аккаунт? <a href="{% url 'accounts:login' %}">Войти</a></p>
+    </div>
+{% endblock %}

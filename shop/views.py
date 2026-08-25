@@ -1,3 +1,8 @@
 from django.shortcuts import render
 
-# Create your views here.
+from .models import Product
+
+
+def home(request):
+    products = Product.objects.filter(is_active=True).select_related('category', 'brand')
+    return render(request, 'shop/home.html', {'products': products})
