@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Оформление заказа — elektronik.kz{% endblock %}
+{% block content %}
+    <h1>Оформление заказа</h1>
+    <div class="card" style="max-width:500px;">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <p style="font-weight:bold;">Итого: {{ cart.total_price }} ₸</p>
+            <button type="submit" class="btn">Подтвердить заказ</button>
+        </form>
+    </div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Личный кабинет — elektronik.kz{% endblock %}
+{% block content %}
+    <h1>Личный кабинет</h1>
+    <div class="card" style="max-width:400px;">
+        <h3>Мои данные</h3>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn">Сохранить</button>
+        </form>
+    </div>
+    <div class="card">
+        <h3>Адреса доставки</h3>
+        <p><a href="{% url 'accounts:addresses' %}">Управлять адресами →</a></p>
+    </div>
+    <div class="card">
+        <h3>Заказы</h3>
+        <p><a href="{% url 'orders:list' %}">Мои заказы →</a></p>
+    </div>
+    <div class="card">
+        <h3>Корзина</h3>
+        <p><a href="{% url 'cart:detail' %}">Перейти в корзину →</a></p>
+    </div>
+{% endblock %}

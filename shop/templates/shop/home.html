@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Каталог — elektronik.kz{% endblock %}
+{% block content %}
+    <h1>Каталог товаров</h1>
+    {% if products %}
+        <div class="grid">
+            {% for product in products %}
+                <div class="card">
+                    {% if product.image %}
+                        <img src="{{ product.image.url }}" alt="{{ product.name }}" style="width:100%;border-radius:6px;">
+                    {% endif %}
+                    <h3>{{ product.name }}</h3>
+                    {% if product.brand %}<p style="color:#666;margin:0 0 8px;">{{ product.brand }}</p>{% endif %}
+                    <p class="product-price">{{ product.price }} ₸</p>
+                    <form action="{% url 'cart:add' product.id %}" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="quantity" value="1">
+                        <button type="submit" class="btn">В корзину</button>
+                    </form>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>Товаров пока нет.</p>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Адрес доставки — elektronik.kz{% endblock %}
+{% block content %}
+    <h1>Адрес доставки</h1>
+    <div class="card" style="max-width:400px;">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn">Сохранить</button>
+        </form>
+    </div>
+{% endblock %}
