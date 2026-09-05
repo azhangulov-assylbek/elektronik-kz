@@ -5,9 +5,19 @@
 ## Стек
 
 - Python 3.13, Django 6.1
-- SQLite для разработки
+- PostgreSQL (через Docker Compose) / SQLite (локально без Docker)
+- Русский и казахский языки интерфейса
 
-## Запуск
+## Запуск через Docker (рекомендуется)
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Приложение поднимется на `http://localhost:8000/`, миграции применяются автоматически при старте контейнера `web`.
+
+## Запуск без Docker
 
 ```bash
 python -m venv .venv
@@ -18,10 +28,15 @@ python manage.py migrate
 python manage.py runserver
 ```
 
+Без переменной `POSTGRES_HOST` в окружении Django автоматически использует SQLite — Postgres не обязателен для локальной разработки без Docker.
+
 ## Структура
 
 - `config/` — настройки и корневой urlconf проекта Django
-- `shop/` — приложение магазина (каталог, товары)
+- `shop/` — каталог товаров (Product/Category/Brand)
+- `accounts/` — пользователи (вход по email/телефону), адреса, личный кабинет
+- `cart/` — корзина
+- `orders/` — заказы
 
 ## История
 
