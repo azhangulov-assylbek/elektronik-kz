@@ -45,8 +45,10 @@ class OrderViewSet(
         except EmptyCartError:
             return Response({'detail': 'Корзина пуста'}, status=status.HTTP_400_BAD_REQUEST)
         except InsufficientStockError as exc:
-            return Response({'detail': 'Недостаточно на складе', 'items': exc.details},
-                             status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'detail': 'Недостаточно на складе', 'items': exc.details},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         send_order_notifications(order)
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)

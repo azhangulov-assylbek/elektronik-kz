@@ -16,7 +16,7 @@ class EmailOrPhoneLoginView(LoginView):
 
 
 class AccountLogoutView(LogoutView):
-    next_page = reverse_lazy('shop:home')
+    next_page = reverse_lazy('shop:home')  # type: ignore[assignment]
 
 
 def register(request):

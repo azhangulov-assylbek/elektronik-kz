@@ -4,6 +4,18 @@ from django.db import models
 from django.utils.text import slugify
 
 
+def make_unique_slug(model_cls, name, slug_field='slug'):
+    """slugify с allow_unicode (иначе кириллические названия дают пустой
+    слаг) и защитой от коллизий при одинаковых названиях."""
+    base = slugify(name, allow_unicode=True) or 'item'
+    slug = base
+    n = 1
+    while model_cls.objects.filter(**{slug_field: slug}).exists():
+        n += 1
+        slug = f'{base}-{n}'
+    return slug
+
+
 class Brand(models.Model):
     name = models.CharField('название', max_length=100, unique=True)
     slug = models.SlugField('слаг', max_length=100, unique=True, blank=True)
@@ -18,7 +30,7 @@ class Brand(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = make_unique_slug(type(self), self.name)
         super().save(*args, **kwargs)
 
 
@@ -41,7 +53,7 @@ class Category(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = make_unique_slug(type(self), self.name)
         super().save(*args, **kwargs)
 
 
@@ -84,7 +96,7 @@ class Product(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = make_unique_slug(type(self), self.name)
         super().save(*args, **kwargs)
 
     def user_has_purchased(self, user):

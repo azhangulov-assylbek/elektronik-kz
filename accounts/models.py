@@ -48,10 +48,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField('сотрудник', default=False)
     date_joined = models.DateTimeField('дата регистрации', auto_now_add=True)
 
-    groups = models.ManyToManyField(Group, verbose_name='группы', blank=True, related_name='accounts_user_set')
-    user_permissions = models.ManyToManyField(
-        Permission, verbose_name='права доступа', blank=True, related_name='accounts_user_set',
-    )
+    # mypy(assignment) на groups/user_permissions ниже — известная особенность
+    # django-stubs: для переопределённых полей выводится менеджер, завязанный
+    # на конкретный класс модели, что формально не совпадает с обобщённой
+    # аннотацией в PermissionsMixin. Переопределение полей с другим
+    # related_name — штатная рекомендация Django для кастомного User.
+    groups = models.ManyToManyField(Group, verbose_name='группы', blank=True, related_name='accounts_user_set')  # type: ignore[assignment]  # noqa: E501
+    user_permissions = models.ManyToManyField(  # type: ignore[assignment]
+        Permission, verbose_name='права доступа', blank=True, related_name='accounts_user_set')
 
     objects = UserManager()
 

@@ -6,7 +6,10 @@ from .models import Cart
 
 @receiver(user_logged_in)
 def merge_session_cart(sender, request, user, **kwargs):
-    session_key = request.session.session_key
+    # request.session.session_key меняется в auth_login() ДО отправки этого
+    # сигнала (Django пересоздаёт ключ сессии при входе), поэтому берём
+    # значение, сохранённое до логина — см. cart.middleware.StashSessionKeyMiddleware.
+    session_key = getattr(request, 'pre_login_session_key', None)
     if not session_key:
         return
     try:

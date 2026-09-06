@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 
 from .models import Brand, Category, Product, Review
 

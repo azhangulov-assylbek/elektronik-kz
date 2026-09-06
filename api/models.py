@@ -1,3 +1,2 @@
-from django.db import models
-
-# Create your models here.
+# Приложение api не хранит собственных данных — только маршруты и
+# сериализация моделей, определённых в accounts/shop/cart/orders.

@@ -25,7 +25,9 @@ def add_to_cart(request, product_id):
     item, _ = CartItem.objects.get_or_create(cart=cart, product=product, defaults={'quantity': 0})
     desired = item.quantity + quantity
     if desired > product.stock:
-        messages.error(request, f'На складе только {product.stock} шт. «{product.name}» — добавлено максимум доступное')
+        messages.error(
+            request, f'На складе только {product.stock} шт. «{product.name}» — добавлено максимум доступное',
+        )
         desired = product.stock
 
     if desired <= 0:
