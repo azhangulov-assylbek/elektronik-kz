@@ -4,6 +4,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from cart.utils import get_cart
+from shop.models import Product
 
 from .forms import CheckoutForm
 from .models import Order, OrderItem
@@ -32,10 +33,28 @@ def checkout(request):
         form = CheckoutForm(request.POST, initial=initial)
         if form.is_valid():
             with transaction.atomic():
+                items = list(cart.items.select_related('product'))
+                product_ids = [item.product_id for item in items]
+                locked_products = {
+                    p.pk: p for p in Product.objects.select_for_update().filter(pk__in=product_ids)
+                }
+
+                insufficient = [
+                    item for item in items
+                    if item.quantity > locked_products[item.product_id].stock
+                ]
+                if insufficient:
+                    names = ', '.join(
+                        f'{item.product.name} (в наличии {locked_products[item.product_id].stock})'
+                        for item in insufficient
+                    )
+                    messages.error(request, f'Недостаточно на складе: {names}')
+                    return redirect('cart:detail')
+
                 order = form.save(commit=False)
                 order.user = request.user
                 order.save()
-                for item in cart.items.select_related('product'):
+                for item in items:
                     OrderItem.objects.create(
                         order=order,
                         product=item.product,
@@ -43,6 +62,9 @@ def checkout(request):
                         price=item.product.price,
                         quantity=item.quantity,
                     )
+                    product = locked_products[item.product_id]
+                    product.stock -= item.quantity
+                    product.save(update_fields=['stock'])
                 cart.items.all().delete()
             messages.success(request, f'Заказ #{order.pk} оформлен')
             return redirect('orders:detail', pk=order.pk)

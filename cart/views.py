@@ -22,11 +22,18 @@ def add_to_cart(request, product_id):
     except ValueError:
         quantity = 1
 
-    item, created = CartItem.objects.get_or_create(cart=cart, product=product, defaults={'quantity': quantity})
-    if not created:
-        item.quantity += quantity
+    item, _ = CartItem.objects.get_or_create(cart=cart, product=product, defaults={'quantity': 0})
+    desired = item.quantity + quantity
+    if desired > product.stock:
+        messages.error(request, f'На складе только {product.stock} шт. «{product.name}» — добавлено максимум доступное')
+        desired = product.stock
+
+    if desired <= 0:
+        item.delete()
+    else:
+        item.quantity = desired
         item.save(update_fields=['quantity'])
-    messages.success(request, f'«{product.name}» добавлен в корзину')
+        messages.success(request, f'«{product.name}» в корзине: {desired} шт.')
     return redirect('cart:detail')
 
 
@@ -42,6 +49,9 @@ def update_cart_item(request, item_id):
     if quantity <= 0:
         item.delete()
     else:
+        if quantity > item.product.stock:
+            messages.error(request, f'На складе только {item.product.stock} шт. «{item.product.name}»')
+            quantity = item.product.stock
         item.quantity = quantity
         item.save(update_fields=['quantity'])
     return redirect('cart:detail')

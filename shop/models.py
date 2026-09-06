@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
 
@@ -43,6 +45,11 @@ class Category(models.Model):
         super().save(*args, **kwargs)
 
 
+class ProductQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(is_active=True)
+
+
 class Product(models.Model):
     name = models.CharField('название', max_length=255)
     slug = models.SlugField('слаг', max_length=255, unique=True, blank=True)
@@ -65,6 +72,8 @@ class Product(models.Model):
     created_at = models.DateTimeField('создан', auto_now_add=True)
     updated_at = models.DateTimeField('обновлён', auto_now=True)
 
+    objects = ProductQuerySet.as_manager()
+
     class Meta:
         verbose_name = 'товар'
         verbose_name_plural = 'товары'
@@ -77,3 +86,33 @@ class Product(models.Model):
         if not self.slug:
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
+
+    def user_has_purchased(self, user):
+        if not user.is_authenticated:
+            return False
+        return self.orderitem_set.filter(order__user=user).exists()
+
+    def user_has_reviewed(self, user):
+        if not user.is_authenticated:
+            return False
+        return self.reviews.filter(user=user).exists()
+
+
+class Review(models.Model):
+    product = models.ForeignKey(Product, verbose_name='товар', related_name='reviews', on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name='пользователь',
+        related_name='reviews', on_delete=models.CASCADE,
+    )
+    rating = models.PositiveSmallIntegerField('оценка', validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment = models.TextField('комментарий', blank=True)
+    created_at = models.DateTimeField('создан', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'отзыв'
+        verbose_name_plural = 'отзывы'
+        ordering = ['-created_at']
+        unique_together = [('product', 'user')]
+
+    def __str__(self):
+        return f'{self.product} — {self.rating}★ от {self.user}'
