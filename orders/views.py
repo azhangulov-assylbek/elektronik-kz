@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from cart.utils import get_cart
 from shop.models import Product
 
+from .emails import send_order_notifications
 from .forms import CheckoutForm
 from .models import Order, OrderItem
 
@@ -53,6 +54,8 @@ def checkout(request):
 
                 order = form.save(commit=False)
                 order.user = request.user
+                if order.payment_method == Order.PaymentMethod.CARD:
+                    order.status = Order.Status.PAID
                 order.save()
                 for item in items:
                     OrderItem.objects.create(
@@ -66,6 +69,7 @@ def checkout(request):
                     product.stock -= item.quantity
                     product.save(update_fields=['stock'])
                 cart.items.all().delete()
+            send_order_notifications(order)
             messages.success(request, f'Заказ #{order.pk} оформлен')
             return redirect('orders:detail', pk=order.pk)
     else:

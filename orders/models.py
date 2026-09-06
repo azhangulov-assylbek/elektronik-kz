@@ -5,16 +5,24 @@ from django.db import models
 class Order(models.Model):
     class Status(models.TextChoices):
         NEW = 'new', 'Новый'
+        PAID = 'paid', 'Оплачен'
         CONFIRMED = 'confirmed', 'Подтверждён'
         SHIPPED = 'shipped', 'Отправлен'
         DELIVERED = 'delivered', 'Доставлен'
         CANCELLED = 'cancelled', 'Отменён'
+
+    class PaymentMethod(models.TextChoices):
+        CARD = 'card', 'Картой онлайн'
+        CASH = 'cash', 'Наличными при получении'
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name='пользователь',
         related_name='orders', on_delete=models.CASCADE,
     )
     status = models.CharField('статус', max_length=20, choices=Status.choices, default=Status.NEW)
+    payment_method = models.CharField(
+        'способ оплаты', max_length=20, choices=PaymentMethod.choices, default=PaymentMethod.CASH,
+    )
     full_name = models.CharField('получатель', max_length=200)
     phone = models.CharField('телефон', max_length=20)
     city = models.CharField('город', max_length=100)

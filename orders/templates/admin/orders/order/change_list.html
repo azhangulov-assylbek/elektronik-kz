@@ -1,0 +1,11 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools %}
+  {% if summary %}
+    <div style="margin-bottom:12px;padding:10px 14px;background:#f0f0f0;border-radius:4px;">
+      <strong>Заказов в выборке:</strong> {{ summary.orders_count }}
+      &nbsp;&nbsp; <strong>Выручка:</strong> {{ summary.total_revenue }} ₸
+    </div>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}
