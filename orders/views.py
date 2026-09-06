@@ -1,14 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from cart.utils import get_cart
-from shop.models import Product
 
 from .emails import send_order_notifications
 from .forms import CheckoutForm
-from .models import Order, OrderItem
+from .models import Order
+from .services import InsufficientStockError, create_order_from_cart
 
 
 @login_required
@@ -33,42 +32,15 @@ def checkout(request):
     if request.method == 'POST':
         form = CheckoutForm(request.POST, initial=initial)
         if form.is_valid():
-            with transaction.atomic():
-                items = list(cart.items.select_related('product'))
-                product_ids = [item.product_id for item in items]
-                locked_products = {
-                    p.pk: p for p in Product.objects.select_for_update().filter(pk__in=product_ids)
-                }
+            try:
+                order = create_order_from_cart(
+                    user=request.user, cart=cart, order_data=form.cleaned_data,
+                )
+            except InsufficientStockError as exc:
+                names = ', '.join(f"{d['product']} (в наличии {d['available']})" for d in exc.details)
+                messages.error(request, f'Недостаточно на складе: {names}')
+                return redirect('cart:detail')
 
-                insufficient = [
-                    item for item in items
-                    if item.quantity > locked_products[item.product_id].stock
-                ]
-                if insufficient:
-                    names = ', '.join(
-                        f'{item.product.name} (в наличии {locked_products[item.product_id].stock})'
-                        for item in insufficient
-                    )
-                    messages.error(request, f'Недостаточно на складе: {names}')
-                    return redirect('cart:detail')
-
-                order = form.save(commit=False)
-                order.user = request.user
-                if order.payment_method == Order.PaymentMethod.CARD:
-                    order.status = Order.Status.PAID
-                order.save()
-                for item in items:
-                    OrderItem.objects.create(
-                        order=order,
-                        product=item.product,
-                        product_name=item.product.name,
-                        price=item.product.price,
-                        quantity=item.quantity,
-                    )
-                    product = locked_products[item.product_id]
-                    product.stock -= item.quantity
-                    product.save(update_fields=['stock'])
-                cart.items.all().delete()
             send_order_notifications(order)
             messages.success(request, f'Заказ #{order.pk} оформлен')
             return redirect('orders:detail', pk=order.pk)
