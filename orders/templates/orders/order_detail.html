@@ -1,15 +1,21 @@
 {% extends 'base.html' %}
-{% block title %}Заказ #{{ order.id }} — elektronik.kz{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Заказ" %} #{{ order.id }} — elektronik.kz{% endblock %}
 {% block content %}
-    <h1>Заказ #{{ order.id }}</h1>
+    <h1>{% trans "Заказ" %} #{{ order.id }}</h1>
     <div class="card">
-        <p><strong>Статус:</strong> {{ order.get_status_display }}</p>
-        <p><strong>Способ оплаты:</strong> {{ order.get_payment_method_display }}</p>
-        <p><strong>Получатель:</strong> {{ order.full_name }}, {{ order.phone }}</p>
-        <p><strong>Адрес:</strong> {{ order.city }}, {{ order.street }}, {{ order.house }}{% if order.apartment %}, кв. {{ order.apartment }}{% endif %}</p>
-        {% if order.comment %}<p><strong>Комментарий:</strong> {{ order.comment }}</p>{% endif %}
+        <p><strong>{% trans "Статус" %}:</strong> {{ order.get_status_display }}</p>
+        <p><strong>{% trans "Способ оплаты" %}:</strong> {{ order.get_payment_method_display }}</p>
+        <p><strong>{% trans "Получатель" %}:</strong> {{ order.full_name }}, {{ order.phone }}</p>
+        <p><strong>{% trans "Адрес" %}:</strong> {{ order.city }}, {{ order.street }}, {{ order.house }}{% if order.apartment %}, {% trans "кв." %} {{ order.apartment }}{% endif %}</p>
+        {% if order.comment %}<p><strong>{% trans "Комментарий" %}:</strong> {{ order.comment }}</p>{% endif %}
         <table>
-            <thead><tr><th>Товар</th><th>Цена</th><th>Кол-во</th><th>Сумма</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>{% trans "Товар" %}</th><th>{% trans "Цена" %}</th>
+                    <th>{% trans "Кол-во" %}</th><th>{% trans "Сумма" %}</th>
+                </tr>
+            </thead>
             <tbody>
             {% for item in order.items.all %}
                 <tr>
@@ -21,7 +27,7 @@
             {% endfor %}
             </tbody>
         </table>
-        <p style="text-align:right;font-weight:bold;">Итого: {{ order.total_price }} ₸</p>
+        <p style="text-align:right;font-weight:bold;">{% trans "Итого" %}: {{ order.total_price }} ₸</p>
     </div>
-    <a href="{% url 'orders:list' %}">← Все заказы</a>
+    <a href="{% url 'orders:list' %}">← {% trans "Все заказы" %}</a>
 {% endblock %}

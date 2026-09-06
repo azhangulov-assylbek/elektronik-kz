@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.translation import gettext
 from django.views.decorators.http import require_POST
 
 from shop.models import Product
@@ -26,7 +27,10 @@ def add_to_cart(request, product_id):
     desired = item.quantity + quantity
     if desired > product.stock:
         messages.error(
-            request, f'На складе только {product.stock} шт. «{product.name}» — добавлено максимум доступное',
+            request,
+            gettext('На складе только %(stock)s шт. «%(name)s» — добавлено максимум доступное') % {
+                'stock': product.stock, 'name': product.name,
+            },
         )
         desired = product.stock
 
@@ -35,7 +39,10 @@ def add_to_cart(request, product_id):
     else:
         item.quantity = desired
         item.save(update_fields=['quantity'])
-        messages.success(request, f'«{product.name}» в корзине: {desired} шт.')
+        messages.success(
+            request,
+            gettext('«%(name)s» в корзине: %(qty)s шт.') % {'name': product.name, 'qty': desired},
+        )
     return redirect('cart:detail')
 
 
@@ -52,7 +59,12 @@ def update_cart_item(request, item_id):
         item.delete()
     else:
         if quantity > item.product.stock:
-            messages.error(request, f'На складе только {item.product.stock} шт. «{item.product.name}»')
+            messages.error(
+                request,
+                gettext('На складе только %(stock)s шт. «%(name)s»') % {
+                    'stock': item.product.stock, 'name': item.product.name,
+                },
+            )
             quantity = item.product.stock
         item.quantity = quantity
         item.save(update_fields=['quantity'])

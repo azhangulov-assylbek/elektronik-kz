@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.utils.translation import gettext
 
 from .forms import AddressForm, LoginForm, ProfileForm, RegistrationForm
 from .models import Address
@@ -28,7 +29,7 @@ def register(request):
         if form.is_valid():
             user = form.save()
             login(request, user, backend='accounts.backends.EmailOrPhoneBackend')
-            messages.success(request, 'Регистрация прошла успешно')
+            messages.success(request, gettext('Регистрация прошла успешно'))
             return redirect('accounts:profile')
     else:
         form = RegistrationForm()
@@ -42,7 +43,7 @@ def profile(request):
         form = ProfileForm(request.POST, instance=request.user)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Профиль обновлён')
+            messages.success(request, gettext('Профиль обновлён'))
             return redirect('accounts:profile')
     else:
         form = ProfileForm(instance=request.user)
@@ -64,7 +65,7 @@ def address_create(request):
             address = form.save(commit=False)
             address.user = request.user
             address.save()
-            messages.success(request, 'Адрес добавлен')
+            messages.success(request, gettext('Адрес добавлен'))
             return redirect('accounts:addresses')
     else:
         form = AddressForm()
@@ -79,7 +80,7 @@ def address_edit(request, pk):
         form = AddressForm(request.POST, instance=address)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Адрес обновлён')
+            messages.success(request, gettext('Адрес обновлён'))
             return redirect('accounts:addresses')
     else:
         form = AddressForm(instance=address)
@@ -92,7 +93,7 @@ def address_delete(request, pk):
     address = get_object_or_404(Address, pk=pk, user=request.user)
     if request.method == 'POST':
         address.delete()
-        messages.success(request, 'Адрес удалён')
+        messages.success(request, gettext('Адрес удалён'))
         return redirect('accounts:addresses')
 
     return render(request, 'accounts/address_confirm_delete.html', {'address': address})

@@ -1,16 +1,17 @@
 {% extends 'base.html' %}
-{% block title %}Адреса доставки — elektronik.kz{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Адреса доставки" %} — elektronik.kz{% endblock %}
 {% block content %}
-    <h1>Адреса доставки</h1>
-    <p><a href="{% url 'accounts:address_add' %}" class="btn">+ Добавить адрес</a></p>
+    <h1>{% trans "Адреса доставки" %}</h1>
+    <p><a href="{% url 'accounts:address_add' %}" class="btn">+ {% trans "Добавить адрес" %}</a></p>
     {% for address in addresses %}
         <div class="card">
-            <p>{{ address }} {% if address.is_default %}<strong>(по умолчанию)</strong>{% endif %}</p>
+            <p>{{ address }} {% if address.is_default %}<strong>({% trans "по умолчанию" %})</strong>{% endif %}</p>
             {% if address.comment %}<p style="color:#666;">{{ address.comment }}</p>{% endif %}
-            <a href="{% url 'accounts:address_edit' address.id %}">Изменить</a> ·
-            <a href="{% url 'accounts:address_delete' address.id %}">Удалить</a>
+            <a href="{% url 'accounts:address_edit' address.id %}">{% trans "Изменить" %}</a> ·
+            <a href="{% url 'accounts:address_delete' address.id %}">{% trans "Удалить" %}</a>
         </div>
     {% empty %}
-        <p>Адресов пока нет.</p>
+        <p>{% trans "Адресов пока нет." %}</p>
     {% endfor %}
 {% endblock %}

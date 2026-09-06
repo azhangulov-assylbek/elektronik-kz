@@ -1,26 +1,27 @@
 {% extends 'base.html' %}
-{% block title %}Личный кабинет — elektronik.kz{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Личный кабинет" %} — elektronik.kz{% endblock %}
 {% block content %}
-    <h1>Личный кабинет</h1>
+    <h1>{% trans "Личный кабинет" %}</h1>
     <div class="card" style="max-width:400px;">
-        <h3>Мои данные</h3>
+        <h3>{% trans "Мои данные" %}</h3>
         <form method="post">
             {% csrf_token %}
             {{ form.as_p }}
-            <button type="submit" class="btn">Сохранить</button>
+            <button type="submit" class="btn">{% trans "Сохранить" %}</button>
         </form>
-        <p style="margin-top:12px;"><a href="{% url 'accounts:password_change' %}">Сменить пароль →</a></p>
+        <p style="margin-top:12px;"><a href="{% url 'accounts:password_change' %}">{% trans "Сменить пароль" %} →</a></p>
     </div>
     <div class="card">
-        <h3>Адреса доставки</h3>
-        <p><a href="{% url 'accounts:addresses' %}">Управлять адресами →</a></p>
+        <h3>{% trans "Адреса доставки" %}</h3>
+        <p><a href="{% url 'accounts:addresses' %}">{% trans "Управлять адресами" %} →</a></p>
     </div>
     <div class="card">
-        <h3>Заказы</h3>
-        <p><a href="{% url 'orders:list' %}">Мои заказы →</a></p>
+        <h3>{% trans "Заказы" %}</h3>
+        <p><a href="{% url 'orders:list' %}">{% trans "Мои заказы" %} →</a></p>
     </div>
     <div class="card">
-        <h3>Корзина</h3>
-        <p><a href="{% url 'cart:detail' %}">Перейти в корзину →</a></p>
+        <h3>{% trans "Корзина" %}</h3>
+        <p><a href="{% url 'cart:detail' %}">{% trans "Перейти в корзину" %} →</a></p>
     </div>
 {% endblock %}

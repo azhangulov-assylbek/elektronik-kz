@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect
+from django.utils.translation import gettext
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
 
@@ -85,10 +86,10 @@ class ProductDetailView(DetailView):
 def add_review(request, slug):
     product = get_object_or_404(Product, slug=slug, is_active=True)
     if not product.user_has_purchased(request.user):
-        messages.error(request, 'Оставить отзыв можно только после покупки товара')
+        messages.error(request, gettext('Оставить отзыв можно только после покупки товара'))
         return redirect('shop:product_detail', slug=slug)
     if product.user_has_reviewed(request.user):
-        messages.error(request, 'Вы уже оставляли отзыв на этот товар')
+        messages.error(request, gettext('Вы уже оставляли отзыв на этот товар'))
         return redirect('shop:product_detail', slug=slug)
 
     form = ReviewForm(request.POST)
@@ -97,7 +98,7 @@ def add_review(request, slug):
         review.product = product
         review.user = request.user
         review.save()
-        messages.success(request, 'Спасибо за отзыв!')
+        messages.success(request, gettext('Спасибо за отзыв!'))
     else:
-        messages.error(request, 'Не удалось сохранить отзыв — проверьте оценку')
+        messages.error(request, gettext('Не удалось сохранить отзыв — проверьте оценку'))
     return redirect('shop:product_detail', slug=slug)

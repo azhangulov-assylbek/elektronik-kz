@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
+from django.utils.translation import gettext_lazy as _
 
 
 def make_unique_slug(model_cls, name, slug_field='slug'):
@@ -17,12 +18,12 @@ def make_unique_slug(model_cls, name, slug_field='slug'):
 
 
 class Brand(models.Model):
-    name = models.CharField('название', max_length=100, unique=True)
-    slug = models.SlugField('слаг', max_length=100, unique=True, blank=True)
+    name = models.CharField(_('название'), max_length=100, unique=True)
+    slug = models.SlugField(_('слаг'), max_length=100, unique=True, blank=True)
 
     class Meta:
-        verbose_name = 'бренд'
-        verbose_name_plural = 'бренды'
+        verbose_name = _('бренд')
+        verbose_name_plural = _('бренды')
         ordering = ['name']
 
     def __str__(self):
@@ -35,17 +36,17 @@ class Brand(models.Model):
 
 
 class Category(models.Model):
-    name = models.CharField('название', max_length=100)
-    slug = models.SlugField('слаг', max_length=100, unique=True, blank=True)
+    name = models.CharField(_('название'), max_length=100)
+    slug = models.SlugField(_('слаг'), max_length=100, unique=True, blank=True)
     parent = models.ForeignKey(
-        'self', verbose_name='родительская категория',
+        'self', verbose_name=_('родительская категория'),
         null=True, blank=True, related_name='children',
         on_delete=models.CASCADE,
     )
 
     class Meta:
-        verbose_name = 'категория'
-        verbose_name_plural = 'категории'
+        verbose_name = _('категория')
+        verbose_name_plural = _('категории')
         ordering = ['name']
 
     def __str__(self):
@@ -63,32 +64,32 @@ class ProductQuerySet(models.QuerySet):
 
 
 class Product(models.Model):
-    name = models.CharField('название', max_length=255)
-    slug = models.SlugField('слаг', max_length=255, unique=True, blank=True)
-    sku = models.CharField('артикул', max_length=64, unique=True)
+    name = models.CharField(_('название'), max_length=255)
+    slug = models.SlugField(_('слаг'), max_length=255, unique=True, blank=True)
+    sku = models.CharField(_('артикул'), max_length=64, unique=True)
     category = models.ForeignKey(
-        Category, verbose_name='категория',
+        Category, verbose_name=_('категория'),
         null=True, blank=True, related_name='products',
         on_delete=models.SET_NULL,
     )
     brand = models.ForeignKey(
-        Brand, verbose_name='бренд',
+        Brand, verbose_name=_('бренд'),
         null=True, blank=True, related_name='products',
         on_delete=models.SET_NULL,
     )
-    description = models.TextField('описание', blank=True)
-    image = models.ImageField('изображение', upload_to='products/', blank=True)
-    price = models.DecimalField('цена', max_digits=12, decimal_places=2)
-    stock = models.PositiveIntegerField('остаток', default=0)
-    is_active = models.BooleanField('активен', default=True)
-    created_at = models.DateTimeField('создан', auto_now_add=True)
-    updated_at = models.DateTimeField('обновлён', auto_now=True)
+    description = models.TextField(_('описание'), blank=True)
+    image = models.ImageField(_('изображение'), upload_to='products/', blank=True)
+    price = models.DecimalField(_('цена'), max_digits=12, decimal_places=2)
+    stock = models.PositiveIntegerField(_('остаток'), default=0)
+    is_active = models.BooleanField(_('активен'), default=True)
+    created_at = models.DateTimeField(_('создан'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('обновлён'), auto_now=True)
 
     objects = ProductQuerySet.as_manager()
 
     class Meta:
-        verbose_name = 'товар'
-        verbose_name_plural = 'товары'
+        verbose_name = _('товар')
+        verbose_name_plural = _('товары')
         ordering = ['-created_at']
 
     def __str__(self):
@@ -111,18 +112,18 @@ class Product(models.Model):
 
 
 class Review(models.Model):
-    product = models.ForeignKey(Product, verbose_name='товар', related_name='reviews', on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, verbose_name=_('товар'), related_name='reviews', on_delete=models.CASCADE)
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name='пользователь',
+        settings.AUTH_USER_MODEL, verbose_name=_('пользователь'),
         related_name='reviews', on_delete=models.CASCADE,
     )
-    rating = models.PositiveSmallIntegerField('оценка', validators=[MinValueValidator(1), MaxValueValidator(5)])
-    comment = models.TextField('комментарий', blank=True)
-    created_at = models.DateTimeField('создан', auto_now_add=True)
+    rating = models.PositiveSmallIntegerField(_('оценка'), validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment = models.TextField(_('комментарий'), blank=True)
+    created_at = models.DateTimeField(_('создан'), auto_now_add=True)
 
     class Meta:
-        verbose_name = 'отзыв'
-        verbose_name_plural = 'отзывы'
+        verbose_name = _('отзыв')
+        verbose_name_plural = _('отзывы')
         ordering = ['-created_at']
         unique_together = [('product', 'user')]
 

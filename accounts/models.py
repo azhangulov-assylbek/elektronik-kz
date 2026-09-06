@@ -2,10 +2,11 @@ from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import Group, Permission, PermissionsMixin
 from django.core.validators import RegexValidator
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 phone_validator = RegexValidator(
     regex=r'^\+7\d{10}$',
-    message='Номер телефона в формате +77001234567',
+    message=_('Номер телефона в формате +77001234567'),
 )
 
 
@@ -37,16 +38,16 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    email = models.EmailField('email', unique=True, null=True, blank=True)
+    email = models.EmailField(_('email'), unique=True, null=True, blank=True)
     phone = models.CharField(
-        'телефон', max_length=12, unique=True, null=True, blank=True,
+        _('телефон'), max_length=12, unique=True, null=True, blank=True,
         validators=[phone_validator],
     )
-    first_name = models.CharField('имя', max_length=100, blank=True)
-    last_name = models.CharField('фамилия', max_length=100, blank=True)
-    is_active = models.BooleanField('активен', default=True)
-    is_staff = models.BooleanField('сотрудник', default=False)
-    date_joined = models.DateTimeField('дата регистрации', auto_now_add=True)
+    first_name = models.CharField(_('имя'), max_length=100, blank=True)
+    last_name = models.CharField(_('фамилия'), max_length=100, blank=True)
+    is_active = models.BooleanField(_('активен'), default=True)
+    is_staff = models.BooleanField(_('сотрудник'), default=False)
+    date_joined = models.DateTimeField(_('дата регистрации'), auto_now_add=True)
 
     # mypy(assignment) на groups/user_permissions ниже — известная особенность
     # django-stubs: для переопределённых полей выводится менеджер, завязанный
@@ -63,8 +64,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
     class Meta:
-        verbose_name = 'пользователь'
-        verbose_name_plural = 'пользователи'
+        verbose_name = _('пользователь')
+        verbose_name_plural = _('пользователи')
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(email__isnull=False) | models.Q(phone__isnull=False),
@@ -84,26 +85,26 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 class Address(models.Model):
     user = models.ForeignKey(
-        User, verbose_name='пользователь',
+        User, verbose_name=_('пользователь'),
         related_name='addresses', on_delete=models.CASCADE,
     )
-    city = models.CharField('город', max_length=100)
-    street = models.CharField('улица', max_length=255)
-    house = models.CharField('дом', max_length=20)
-    apartment = models.CharField('квартира/офис', max_length=20, blank=True)
-    postal_code = models.CharField('индекс', max_length=20, blank=True)
-    comment = models.CharField('комментарий курьеру', max_length=255, blank=True)
-    is_default = models.BooleanField('адрес по умолчанию', default=False)
+    city = models.CharField(_('город'), max_length=100)
+    street = models.CharField(_('улица'), max_length=255)
+    house = models.CharField(_('дом'), max_length=20)
+    apartment = models.CharField(_('квартира/офис'), max_length=20, blank=True)
+    postal_code = models.CharField(_('индекс'), max_length=20, blank=True)
+    comment = models.CharField(_('комментарий курьеру'), max_length=255, blank=True)
+    is_default = models.BooleanField(_('адрес по умолчанию'), default=False)
 
     class Meta:
-        verbose_name = 'адрес доставки'
-        verbose_name_plural = 'адреса доставки'
+        verbose_name = _('адрес доставки')
+        verbose_name_plural = _('адреса доставки')
         ordering = ['-is_default', 'id']
 
     def __str__(self):
         parts = [self.city, self.street, self.house]
         if self.apartment:
-            parts.append(f'кв. {self.apartment}')
+            parts.append(f'{_("кв.")} {self.apartment}')
         return ', '.join(parts)
 
     def save(self, *args, **kwargs):

@@ -1,5 +1,6 @@
 -r requirements.txt
 
+Babel==2.18.0
 colorama==0.4.6
 django-stubs==6.1.0
 django-stubs-ext==6.1.0

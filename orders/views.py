@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.translation import gettext
 
 from cart.utils import get_cart
 
@@ -14,7 +15,7 @@ from .services import InsufficientStockError, create_order_from_cart
 def checkout(request):
     cart = get_cart(request)
     if not cart.items.exists():
-        messages.warning(request, 'Ваша корзина пуста')
+        messages.warning(request, gettext('Ваша корзина пуста'))
         return redirect('cart:detail')
 
     default_address = request.user.addresses.filter(is_default=True).first()
@@ -37,12 +38,15 @@ def checkout(request):
                     user=request.user, cart=cart, order_data=form.cleaned_data,
                 )
             except InsufficientStockError as exc:
-                names = ', '.join(f"{d['product']} (в наличии {d['available']})" for d in exc.details)
-                messages.error(request, f'Недостаточно на складе: {names}')
+                item_tpl = gettext('%(product)s (в наличии %(available)s)')
+                names = ', '.join(
+                    item_tpl % {'product': d['product'], 'available': d['available']} for d in exc.details
+                )
+                messages.error(request, gettext('Недостаточно на складе: %(names)s') % {'names': names})
                 return redirect('cart:detail')
 
             send_order_notifications(order)
-            messages.success(request, f'Заказ #{order.pk} оформлен')
+            messages.success(request, gettext('Заказ #%(id)s оформлен') % {'id': order.pk})
             return redirect('orders:detail', pk=order.pk)
     else:
         form = CheckoutForm(initial=initial)

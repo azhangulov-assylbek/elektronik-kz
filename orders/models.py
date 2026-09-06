@@ -1,40 +1,41 @@
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 class Order(models.Model):
     class Status(models.TextChoices):
-        NEW = 'new', 'Новый'
-        PAID = 'paid', 'Оплачен'
-        CONFIRMED = 'confirmed', 'Подтверждён'
-        SHIPPED = 'shipped', 'Отправлен'
-        DELIVERED = 'delivered', 'Доставлен'
-        CANCELLED = 'cancelled', 'Отменён'
+        NEW = 'new', _('Новый')
+        PAID = 'paid', _('Оплачен')
+        CONFIRMED = 'confirmed', _('Подтверждён')
+        SHIPPED = 'shipped', _('Отправлен')
+        DELIVERED = 'delivered', _('Доставлен')
+        CANCELLED = 'cancelled', _('Отменён')
 
     class PaymentMethod(models.TextChoices):
-        CARD = 'card', 'Картой онлайн'
-        CASH = 'cash', 'Наличными при получении'
+        CARD = 'card', _('Картой онлайн')
+        CASH = 'cash', _('Наличными при получении')
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name='пользователь',
+        settings.AUTH_USER_MODEL, verbose_name=_('пользователь'),
         related_name='orders', on_delete=models.CASCADE,
     )
-    status = models.CharField('статус', max_length=20, choices=Status.choices, default=Status.NEW)
+    status = models.CharField(_('статус'), max_length=20, choices=Status.choices, default=Status.NEW)
     payment_method = models.CharField(
-        'способ оплаты', max_length=20, choices=PaymentMethod.choices, default=PaymentMethod.CASH,
+        _('способ оплаты'), max_length=20, choices=PaymentMethod.choices, default=PaymentMethod.CASH,
     )
-    full_name = models.CharField('получатель', max_length=200)
-    phone = models.CharField('телефон', max_length=20)
-    city = models.CharField('город', max_length=100)
-    street = models.CharField('улица', max_length=255)
-    house = models.CharField('дом', max_length=20)
-    apartment = models.CharField('квартира/офис', max_length=20, blank=True)
-    comment = models.CharField('комментарий', max_length=255, blank=True)
-    created_at = models.DateTimeField('создан', auto_now_add=True)
+    full_name = models.CharField(_('получатель'), max_length=200)
+    phone = models.CharField(_('телефон'), max_length=20)
+    city = models.CharField(_('город'), max_length=100)
+    street = models.CharField(_('улица'), max_length=255)
+    house = models.CharField(_('дом'), max_length=20)
+    apartment = models.CharField(_('квартира/офис'), max_length=20, blank=True)
+    comment = models.CharField(_('комментарий'), max_length=255, blank=True)
+    created_at = models.DateTimeField(_('создан'), auto_now_add=True)
 
     class Meta:
-        verbose_name = 'заказ'
-        verbose_name_plural = 'заказы'
+        verbose_name = _('заказ')
+        verbose_name_plural = _('заказы')
         ordering = ['-created_at']
 
     def __str__(self):
@@ -46,15 +47,15 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order, verbose_name='заказ', related_name='items', on_delete=models.CASCADE)
-    product = models.ForeignKey('shop.Product', verbose_name='товар', on_delete=models.PROTECT)
-    product_name = models.CharField('название товара', max_length=255)
-    price = models.DecimalField('цена', max_digits=12, decimal_places=2)
-    quantity = models.PositiveIntegerField('количество', default=1)
+    order = models.ForeignKey(Order, verbose_name=_('заказ'), related_name='items', on_delete=models.CASCADE)
+    product = models.ForeignKey('shop.Product', verbose_name=_('товар'), on_delete=models.PROTECT)
+    product_name = models.CharField(_('название товара'), max_length=255)
+    price = models.DecimalField(_('цена'), max_digits=12, decimal_places=2)
+    quantity = models.PositiveIntegerField(_('количество'), default=1)
 
     class Meta:
-        verbose_name = 'позиция заказа'
-        verbose_name_plural = 'позиции заказа'
+        verbose_name = _('позиция заказа')
+        verbose_name_plural = _('позиции заказа')
 
     def __str__(self):
         return f'{self.product_name} x{self.quantity}'

@@ -1,13 +1,14 @@
 {% extends 'base.html' %}
-{% block title %}Регистрация — elektronik.kz{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Регистрация" %} — elektronik.kz{% endblock %}
 {% block content %}
-    <h1>Регистрация</h1>
+    <h1>{% trans "Регистрация" %}</h1>
     <div class="card" style="max-width:400px;">
         <form method="post">
             {% csrf_token %}
             {{ form.as_p }}
-            <button type="submit" class="btn">Зарегистрироваться</button>
+            <button type="submit" class="btn">{% trans "Зарегистрироваться" %}</button>
         </form>
-        <p style="margin-top:12px;">Уже есть аккаунт? <a href="{% url 'accounts:login' %}">Войти</a></p>
+        <p style="margin-top:12px;">{% trans "Уже есть аккаунт?" %} <a href="{% url 'accounts:login' %}">{% trans "Войти" %}</a></p>
     </div>
 {% endblock %}
