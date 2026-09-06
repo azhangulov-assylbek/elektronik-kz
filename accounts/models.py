@@ -38,6 +38,11 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    class Role(models.TextChoices):
+        CUSTOMER = 'customer', _('Покупатель')
+        SELLER = 'seller', _('Продавец')
+        ADMIN = 'admin', _('Администратор')
+
     email = models.EmailField(_('email'), unique=True, null=True, blank=True)
     phone = models.CharField(
         _('телефон'), max_length=12, unique=True, null=True, blank=True,
@@ -45,6 +50,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     first_name = models.CharField(_('имя'), max_length=100, blank=True)
     last_name = models.CharField(_('фамилия'), max_length=100, blank=True)
+    role = models.CharField(_('роль'), max_length=20, choices=Role.choices, default=Role.CUSTOMER)
     is_active = models.BooleanField(_('активен'), default=True)
     is_staff = models.BooleanField(_('сотрудник'), default=False)
     date_joined = models.DateTimeField(_('дата регистрации'), auto_now_add=True)
@@ -81,6 +87,23 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self):
         return self.first_name or str(self)
+
+    def save(self, *args, **kwargs):
+        if self.role == self.Role.ADMIN:
+            # роль "администратор" всегда даёт доступ в /admin/ — не нужно
+            # отдельно выставлять is_staff вручную
+            self.is_staff = True
+        super().save(*args, **kwargs)
+
+    @property
+    def can_manage_catalog(self):
+        """Продавец и администратор работают с карточками товаров."""
+        return self.is_superuser or self.role in (self.Role.SELLER, self.Role.ADMIN)
+
+    @property
+    def can_bulk_import_catalog(self):
+        """Только администратор загружает каталог файлом (CSV/Excel)."""
+        return self.is_superuser or self.role == self.Role.ADMIN
 
 
 class Address(models.Model):

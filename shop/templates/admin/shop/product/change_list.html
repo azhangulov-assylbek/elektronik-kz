@@ -1,0 +1,6 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+  <li><a href="import-catalog/" class="button">Импортировать каталог (CSV/Excel)</a></li>
+  {{ block.super }}
+{% endblock %}

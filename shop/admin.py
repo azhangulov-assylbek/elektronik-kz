@@ -1,6 +1,11 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum
+from django.shortcuts import redirect, render
+from django.urls import path
 
+from .catalog_import import import_catalog
+from .forms import CatalogImportForm
 from .models import Brand, Category, Product, Review
 
 
@@ -42,6 +47,40 @@ class ProductAdmin(admin.ModelAdmin):
     @admin.display(description='Выручка', ordering='revenue_annotated')
     def revenue(self, obj):
         return f'{obj.revenue_annotated or 0} ₸'
+
+    def get_urls(self):
+        custom_urls = [
+            path('import-catalog/', self.admin_site.admin_view(self.import_catalog_view),
+                 name='shop_product_import_catalog'),
+        ]
+        return custom_urls + super().get_urls()
+
+    def import_catalog_view(self, request):
+        if not request.user.can_bulk_import_catalog:
+            raise PermissionDenied
+
+        if request.method == 'POST':
+            form = CatalogImportForm(request.POST, request.FILES)
+            if form.is_valid():
+                result = import_catalog(request.FILES['file'])
+                for error in result.errors[:20]:
+                    messages.error(request, error)
+                if result.created or result.updated:
+                    messages.success(
+                        request,
+                        f'Импорт завершён: создано {result.created}, обновлено {result.updated}',
+                    )
+                return redirect('admin:shop_product_changelist')
+        else:
+            form = CatalogImportForm()
+
+        context = {
+            **self.admin_site.each_context(request),
+            'form': form,
+            'title': 'Импорт каталога товаров',
+            'opts': self.model._meta,
+        }
+        return render(request, 'admin/shop/product/import_catalog.html', context)
 
 
 @admin.register(Review)

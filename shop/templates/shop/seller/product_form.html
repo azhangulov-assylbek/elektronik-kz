@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% if is_new %}{% trans "Новый товар" %}{% else %}{% trans "Редактирование товара" %}{% endif %} — elektronik.kz{% endblock %}
+{% block content %}
+    <p><a href="{% url 'shop:seller_product_list' %}">← {% trans "К списку товаров" %}</a></p>
+    <h1>{% if is_new %}{% trans "Новый товар" %}{% else %}{% trans "Редактирование товара" %}{% endif %}</h1>
+    <div class="card" style="max-width:480px;">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn">{% trans "Сохранить" %}</button>
+        </form>
+    </div>
+{% endblock %}

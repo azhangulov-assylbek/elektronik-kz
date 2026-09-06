@@ -7,18 +7,20 @@ from .models import Address, User
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     ordering = ['id']
-    list_display = ('email', 'phone', 'first_name', 'last_name', 'is_staff', 'is_active')
+    list_display = ('email', 'phone', 'first_name', 'last_name', 'role', 'is_staff', 'is_active')
+    list_filter = ('role', 'is_staff', 'is_active')
     search_fields = ('email', 'phone', 'first_name', 'last_name')
     fieldsets = (
         (None, {'fields': ('email', 'phone', 'password')}),
         ('Личные данные', {'fields': ('first_name', 'last_name')}),
+        ('Роль', {'fields': ('role',)}),
         ('Права доступа', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Даты', {'fields': ('date_joined', 'last_login')}),
     )
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'phone', 'password1', 'password2'),
+            'fields': ('email', 'phone', 'role', 'password1', 'password2'),
         }),
     )
     readonly_fields = ('date_joined', 'last_login')

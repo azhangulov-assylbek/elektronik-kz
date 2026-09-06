@@ -1,0 +1,22 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div id="content-main">
+    <p>Загрузите CSV или Excel (.xlsx) файл со списком товаров. Обязательные колонки:
+        <code>name</code>, <code>sku</code>, <code>price</code>.
+        Необязательные: <code>category</code>, <code>brand</code>, <code>description</code>,
+        <code>stock</code>, <code>is_active</code>.</p>
+    <p>Товар ищется по артикулу (<code>sku</code>) — если такой уже есть в каталоге, он
+        обновится; если нет, будет создан новый. Категория и бренд создаются автоматически
+        по названию, если их ещё нет.</p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="submit-row">
+            <input type="submit" value="Загрузить" class="default">
+        </div>
+    </form>
+</div>
+{% endblock %}

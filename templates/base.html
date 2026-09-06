@@ -39,6 +39,9 @@
         <a href="{% url 'cart:detail' %}">{% trans "Корзина" %}</a>
         {% if user.is_authenticated %}
             <a href="{% url 'orders:list' %}">{% trans "Мои заказы" %}</a>
+            {% if user.can_manage_catalog %}
+                <a href="{% url 'shop:seller_product_list' %}">{% trans "Панель продавца" %}</a>
+            {% endif %}
             <a href="{% url 'accounts:profile' %}">{% trans "Личный кабинет" %}</a>
             <form action="{% url 'accounts:logout' %}" method="post" style="display:inline">
                 {% csrf_token %}
