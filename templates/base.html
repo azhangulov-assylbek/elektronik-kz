@@ -5,65 +5,197 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="{% static 'shop/favicon.svg' %}" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
     <title>{% block title %}elektronik.kz{% endblock %}</title>
     <style>
+        :root {
+            --green: #117d11;
+            --green-dark: #0c5e0c;
+            --accent: #fc482d;
+            --bg-light: #f8f8f8;
+            --text-dark: #333;
+            --border: #e5e5e5;
+        }
         * { box-sizing: border-box; }
-        body { font-family: -apple-system, Segoe UI, Arial, sans-serif; margin: 0; background: #f5f6f8; color: #1a1a1a; }
-        header { background: #1a2b4c; color: #fff; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-        header a { color: #fff; text-decoration: none; margin-left: 16px; }
-        header a:first-child { margin-left: 0; font-weight: bold; font-size: 1.2em; display: flex; align-items: center; }
-        .logo { height: 28px; display: block; }
-        nav a { opacity: 0.9; }
-        nav a:hover { opacity: 1; text-decoration: underline; }
-        main { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
+        body { font-family: 'Ubuntu', Arial, sans-serif; margin: 0; background: #fff; color: var(--text-dark); }
+        a { color: inherit; }
+
+        /* верхняя полоса */
+        .topbar { background: #fff; border-bottom: 1px solid var(--border); }
+        .topbar-inner {
+            max-width: 1200px; margin: 0 auto; padding: 12px 20px;
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+        }
+        .topbar .logo { height: 30px; display: block; }
+        .topbar-links { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; font-size: 0.85em; }
+        .topbar-links a { text-decoration: none; color: #555; }
+        .topbar-links a:hover { color: var(--green); }
+        .topbar-links form button { background: none; border: none; color: #555; cursor: pointer; font: inherit; padding: 0; }
+        .topbar-links form button:hover { color: var(--green); }
+        .topbar-links select { border: 1px solid var(--border); border-radius: 4px; padding: 3px 6px; font: inherit; background: #fff; }
+
+        /* зелёная полоса каталога */
+        .catalogbar { background: var(--green); color: #fff; }
+        .catalogbar-inner {
+            max-width: 1200px; margin: 0 auto; padding: 10px 20px;
+            display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        }
+        .catalog-btn {
+            display: flex; align-items: center; gap: 8px; background: var(--green-dark); color: #fff;
+            border: none; padding: 10px 18px; border-radius: 4px; text-decoration: none;
+            font-weight: 700; text-transform: uppercase; font-size: 0.85em; white-space: nowrap;
+        }
+        .catalog-btn:hover { background: #094609; }
+        .search-form { flex: 1; min-width: 180px; display: flex; }
+        .search-form input {
+            flex: 1; border: none; border-radius: 4px 0 0 4px; padding: 10px 14px; font: inherit;
+        }
+        .search-form button {
+            border: none; background: var(--green-dark); color: #fff; padding: 0 16px; border-radius: 0 4px 4px 0; cursor: pointer;
+        }
+        .search-form button:hover { background: #094609; }
+        .cart-link {
+            display: flex; align-items: center; gap: 6px; text-decoration: none; color: #fff;
+            font-weight: 500; white-space: nowrap;
+        }
+        .cart-badge {
+            background: var(--accent); color: #fff; border-radius: 50%; min-width: 20px; height: 20px;
+            display: inline-flex; align-items: center; justify-content: center; font-size: 0.75em; padding: 0 4px;
+        }
+
+        main { max-width: 1200px; margin: 24px auto; padding: 0 20px; }
         .messages { list-style: none; padding: 0; margin: 0 0 16px; }
-        .messages li { padding: 10px 14px; border-radius: 6px; margin-bottom: 8px; background: #e6f4ea; color: #1e5e2f; }
+        .messages li { padding: 10px 14px; border-radius: 4px; margin-bottom: 8px; background: #e6f4ea; color: #1e5e2f; }
         .messages li.error { background: #fde8e8; color: #8a1f1f; }
         .messages li.warning { background: #fff4e0; color: #7a5200; }
-        .card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
+
+        .card { background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 16px; margin-bottom: 16px; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
-        .btn { display: inline-block; background: #1a2b4c; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 0.95em; }
-        .btn:hover { background: #2a3f6f; }
-        .btn-danger { background: #b3261e; }
-        input[type=text], input[type=email], input[type=password], input[type=number], textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; margin-top: 4px; margin-bottom: 12px; }
-        label { font-weight: 600; font-size: 0.9em; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
+
+        .btn {
+            display: inline-block; background: var(--green); color: #fff; border: none; padding: 10px 20px;
+            border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 0.9em; font-weight: 500;
+            font-family: inherit;
+        }
+        .btn:hover { background: var(--green-dark); }
+        .btn-danger { background: var(--accent); }
+        .btn-danger:hover { background: #d63b21; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+
+        input[type=text], input[type=email], input[type=password], input[type=number], textarea, select {
+            width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px;
+            margin-top: 4px; margin-bottom: 12px; font-family: inherit; font-size: 0.95em;
+        }
+        label { font-weight: 500; font-size: 0.9em; color: #555; }
+
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
-        .product-price { font-weight: bold; font-size: 1.1em; margin: 8px 0; }
+
+        /* карточка товара в стиле бейджей megastroy */
+        .product-card { position: relative; background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 14px; display: flex; flex-direction: column; }
+        .product-badge {
+            position: absolute; top: 10px; left: 10px; background: var(--green); color: #fff;
+            font-size: 0.7em; font-weight: 700; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; z-index: 1;
+        }
+        .product-badge.out { background: #999; }
+        .product-card img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 4px; background: var(--bg-light); }
+        .product-card h3, .product-card .product-name { font-size: 0.95em; font-weight: 500; margin: 10px 0 4px; min-height: 2.6em; }
+        .product-sku { color: #999; font-size: 0.78em; margin: 0 0 6px; }
+        .product-stock { color: #777; font-size: 0.8em; margin: 0 0 6px; }
+        .product-price { font-weight: 700; font-size: 1.15em; color: var(--text-dark); margin: 4px 0 10px; }
+
+        /* плитки категорий */
+        .category-tile {
+            display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
+            background: var(--bg-light); border-radius: 4px; padding: 20px 12px; text-decoration: none; color: var(--text-dark);
+            font-weight: 500; font-size: 0.85em; text-transform: uppercase;
+        }
+        .category-tile:hover { background: #eef7ee; color: var(--green); }
+        .category-icon {
+            width: 56px; height: 56px; border-radius: 50%; background: #fff; border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center; font-size: 1.6em;
+        }
+
+        /* секции главной */
+        .hero {
+            background: linear-gradient(120deg, var(--green) 0%, var(--green-dark) 100%);
+            color: #fff; border-radius: 6px; padding: 48px 32px; margin-bottom: 32px;
+        }
+        .hero h1 { font-size: 1.8em; margin: 0 0 12px; }
+        .hero p { margin: 0 0 20px; opacity: 0.9; }
+        .hero .btn { background: #fff; color: var(--green); }
+        .hero .btn:hover { background: #eee; }
+
+        .section-title { font-size: 1.3em; font-weight: 700; margin: 32px 0 16px; text-transform: uppercase; }
+
+        .features-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .feature { display: flex; align-items: center; gap: 12px; background: var(--bg-light); border-radius: 4px; padding: 16px; }
+        .feature-icon { font-size: 1.8em; }
+        .feature strong { display: block; font-size: 0.9em; }
+        .feature span { font-size: 0.78em; color: #777; }
+
+        /* футер */
+        footer { background: #262b22; color: #ccc; margin-top: 48px; }
+        .footer-inner { max-width: 1200px; margin: 0 auto; padding: 40px 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 24px; }
+        .footer-col h4 { color: #fff; font-size: 0.9em; text-transform: uppercase; margin: 0 0 12px; }
+        .footer-col a { display: block; color: #ccc; text-decoration: none; font-size: 0.88em; margin-bottom: 8px; }
+        .footer-col a:hover { color: #fff; }
+        .footer-bottom { border-top: 1px solid #3a3f36; text-align: center; padding: 16px; font-size: 0.8em; color: #888; }
+
+        @media (max-width: 700px) {
+            .catalogbar-inner { flex-wrap: wrap; }
+            .search-form { order: 3; width: 100%; }
+        }
     </style>
 </head>
 <body>
-<header>
-    <a href="{% url 'shop:home' %}"><img class="logo" src="{% static 'shop/logo-header.svg' %}" alt="elektronik.kz"></a>
-    <nav>
-        <a href="{% url 'cart:detail' %}">{% trans "Корзина" %}</a>
-        {% if user.is_authenticated %}
-            <a href="{% url 'orders:list' %}">{% trans "Мои заказы" %}</a>
-            {% if user.can_manage_catalog %}
-                <a href="{% url 'shop:seller_product_list' %}">{% trans "Панель продавца" %}</a>
+<div class="topbar">
+    <div class="topbar-inner">
+        <a href="{% url 'shop:home' %}"><img class="logo" src="{% static 'shop/logo-light.svg' %}" alt="elektronik.kz"></a>
+        <div class="topbar-links">
+            {% if user.is_authenticated %}
+                <a href="{% url 'orders:list' %}">{% trans "Мои заказы" %}</a>
+                {% if user.can_manage_catalog %}
+                    <a href="{% url 'shop:seller_product_list' %}">{% trans "Панель продавца" %}</a>
+                {% endif %}
+                <a href="{% url 'accounts:profile' %}">{% trans "Личный кабинет" %}</a>
+                <form action="{% url 'accounts:logout' %}" method="post" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit">{% trans "Выйти" %}</button>
+                </form>
+            {% else %}
+                <a href="{% url 'accounts:login' %}">{% trans "Войти" %}</a>
+                <a href="{% url 'accounts:register' %}">{% trans "Регистрация" %}</a>
             {% endif %}
-            <a href="{% url 'accounts:profile' %}">{% trans "Личный кабинет" %}</a>
-            <form action="{% url 'accounts:logout' %}" method="post" style="display:inline">
+            <form action="{% url 'set_language' %}" method="post" style="display:inline">
                 {% csrf_token %}
-                <button type="submit" style="background:none;border:none;color:#fff;opacity:0.9;cursor:pointer;margin-left:16px;font:inherit;">{% trans "Выйти" %}</button>
+                <input name="next" type="hidden" value="{{ request.path }}">
+                <select name="language" onchange="this.form.submit()">
+                    {% get_current_language as CURRENT_LANGUAGE %}
+                    {% get_available_languages as AVAILABLE_LANGUAGES %}
+                    {% for lang_code, lang_name in AVAILABLE_LANGUAGES %}
+                        <option value="{{ lang_code }}" {% if lang_code == CURRENT_LANGUAGE %}selected{% endif %}>{{ lang_name }}</option>
+                    {% endfor %}
+                </select>
             </form>
-        {% else %}
-            <a href="{% url 'accounts:login' %}">{% trans "Войти" %}</a>
-            <a href="{% url 'accounts:register' %}">{% trans "Регистрация" %}</a>
-        {% endif %}
-        <form action="{% url 'set_language' %}" method="post" style="display:inline;margin-left:16px;">
-            {% csrf_token %}
-            <input name="next" type="hidden" value="{{ request.path }}">
-            <select name="language" onchange="this.form.submit()" style="background:#1a2b4c;color:#fff;border:1px solid #3a4d78;border-radius:4px;padding:2px 4px;">
-                {% get_current_language as CURRENT_LANGUAGE %}
-                {% get_available_languages as AVAILABLE_LANGUAGES %}
-                {% for lang_code, lang_name in AVAILABLE_LANGUAGES %}
-                    <option value="{{ lang_code }}" {% if lang_code == CURRENT_LANGUAGE %}selected{% endif %}>{{ lang_name }}</option>
-                {% endfor %}
-            </select>
+        </div>
+    </div>
+</div>
+<div class="catalogbar">
+    <div class="catalogbar-inner">
+        <a href="{% url 'shop:home' %}" class="catalog-btn">☰ {% trans "Каталог" %}</a>
+        <form action="{% url 'shop:home' %}" method="get" class="search-form">
+            <input type="text" name="q" placeholder="{% trans 'Поиск товаров' %}" value="{{ request.GET.q }}">
+            <button type="submit">🔍</button>
         </form>
-    </nav>
-</header>
+        <a href="{% url 'cart:detail' %}" class="cart-link">
+            🛒 {% trans "Корзина" %}
+            <span class="cart-badge">{{ cart_items_count }}</span>
+        </a>
+    </div>
+</div>
 <main>
     {% if messages %}
         <ul class="messages">
@@ -74,5 +206,30 @@
     {% endif %}
     {% block content %}{% endblock %}
 </main>
+<footer>
+    <div class="footer-inner">
+        <div class="footer-col">
+            <h4>{% trans "О компании" %}</h4>
+            <a href="{% url 'shop:home' %}">{% trans "Каталог товаров" %}</a>
+            <a href="{% url 'accounts:register' %}">{% trans "Регистрация" %}</a>
+        </div>
+        <div class="footer-col">
+            <h4>{% trans "Покупателям" %}</h4>
+            <a href="{% url 'orders:list' %}">{% trans "Мои заказы" %}</a>
+            <a href="{% url 'accounts:addresses' %}">{% trans "Адреса доставки" %}</a>
+        </div>
+        <div class="footer-col">
+            <h4>{% trans "Способы оплаты" %}</h4>
+            <span style="font-size:0.88em;">{% trans "Наличными при получении" %}</span><br>
+            <span style="font-size:0.88em;">{% trans "Онлайн-оплата картой — скоро" %}</span>
+        </div>
+        <div class="footer-col">
+            <h4>{% trans "Контакты" %}</h4>
+            <span style="font-size:0.88em;">г. Алматы</span>
+            <span style="font-size:0.88em;">info@elektronik.kz</span>
+        </div>
+    </div>
+    <div class="footer-bottom">© {% now "Y" %} elektronik.kz</div>
+</footer>
 </body>
 </html>

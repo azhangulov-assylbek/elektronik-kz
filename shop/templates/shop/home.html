@@ -2,7 +2,35 @@
 {% load i18n %}
 {% block title %}{% trans "Каталог" %} — elektronik.kz{% endblock %}
 {% block content %}
-    <h1>{% trans "Каталог товаров" %}</h1>
+
+    {% if not request.GET.q and not request.GET.category and not price_min and not price_max %}
+        <div class="hero">
+            <h1>{% trans "Электроника и техника с доставкой по Казахстану" %}</h1>
+            <p>{% trans "Ноутбуки, смартфоны и аксессуары от проверенных брендов" %}</p>
+            <a href="#catalog" class="btn">{% trans "Смотреть каталог" %}</a>
+        </div>
+
+        <div class="features-row">
+            <div class="feature">
+                <span class="feature-icon">🚚</span>
+                <div><strong>{% trans "Доставка" %}</strong><span>{% trans "По всему Казахстану" %}</span></div>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">💳</span>
+                <div><strong>{% trans "Оплата" %}</strong><span>{% trans "Картой или наличными" %}</span></div>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">↩️</span>
+                <div><strong>{% trans "Возврат" %}</strong><span>{% trans "В течение 14 дней" %}</span></div>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🎧</span>
+                <div><strong>{% trans "Поддержка" %}</strong><span>{% trans "Отвечаем быстро" %}</span></div>
+            </div>
+        </div>
+    {% endif %}
+
+    <h2 class="section-title" id="catalog">{% trans "Каталог товаров" %}</h2>
 
     <form method="get" class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
         <div style="flex:1;min-width:180px;">
@@ -11,7 +39,7 @@
         </div>
         <div style="min-width:160px;">
             <label>{% trans "Категория" %}</label>
-            <select name="category" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;">
+            <select name="category">
                 <option value="">{% trans "Все" %}</option>
                 {% for cat in categories %}
                     <option value="{{ cat.slug }}" {% if current_category.slug == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
@@ -28,7 +56,7 @@
         </div>
         <div style="min-width:160px;">
             <label>{% trans "Сортировка" %}</label>
-            <select name="sort" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;">
+            <select name="sort">
                 <option value="new" {% if sort == 'new' %}selected{% endif %}>{% trans "Сначала новые" %}</option>
                 <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>{% trans "Цена: по возрастанию" %}</option>
                 <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>{% trans "Цена: по убыванию" %}</option>
@@ -43,23 +71,7 @@
     {% if products %}
         <div class="grid">
             {% for product in products %}
-                <div class="card">
-                    <a href="{% url 'shop:product_detail' product.slug %}" style="color:inherit;text-decoration:none;">
-                        {% if product.image %}
-                            <img src="{{ product.image.url }}" alt="{{ product.name }}" style="width:100%;border-radius:6px;">
-                        {% endif %}
-                        <h3>{{ product.name }}</h3>
-                    </a>
-                    {% if product.brand %}<p style="color:#666;margin:0 0 8px;">{{ product.brand }}</p>{% endif %}
-                    <p class="product-price">{{ product.price }} ₸</p>
-                    <form action="{% url 'cart:add' product.id %}" method="post">
-                        {% csrf_token %}
-                        <input type="hidden" name="quantity" value="1">
-                        <button type="submit" class="btn" {% if product.stock == 0 %}disabled{% endif %}>
-                            {% if product.stock == 0 %}{% trans "Нет в наличии" %}{% else %}{% trans "В корзину" %}{% endif %}
-                        </button>
-                    </form>
-                </div>
+                {% include 'shop/_product_card.html' %}
             {% endfor %}
         </div>
 
@@ -76,5 +88,17 @@
         {% endif %}
     {% else %}
         <p>{% trans "Ничего не найдено." %}</p>
+    {% endif %}
+
+    {% if categories %}
+        <h2 class="section-title">{% trans "Категории" %}</h2>
+        <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));">
+            {% for cat in categories %}
+                <a href="?category={{ cat.slug }}" class="category-tile">
+                    <span class="category-icon">📦</span>
+                    {{ cat.name }}
+                </a>
+            {% endfor %}
+        </div>
     {% endif %}
 {% endblock %}

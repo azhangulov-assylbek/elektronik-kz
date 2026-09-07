@@ -2,13 +2,20 @@
 {% load i18n %}
 {% block title %}{{ product.name }} — elektronik.kz{% endblock %}
 {% block content %}
-    <p><a href="{% url 'shop:home' %}">← {% trans "К каталогу" %}</a></p>
+    <p style="color:#999;font-size:0.85em;">
+        <a href="{% url 'shop:home' %}" style="color:#999;">{% trans "Каталог" %}</a>
+        {% if product.category %} / <a href="{% url 'shop:home' %}?category={{ product.category.slug }}" style="color:#999;">{{ product.category }}</a>{% endif %}
+        / {{ product.name }}
+    </p>
     <div class="card" style="display:flex;gap:24px;flex-wrap:wrap;">
         {% if product.image %}
-            <img src="{{ product.image.url }}" alt="{{ product.name }}" style="max-width:320px;border-radius:6px;">
+            <img src="{{ product.image.url }}" alt="{{ product.name }}" style="max-width:320px;width:100%;border-radius:4px;background:var(--bg-light);object-fit:contain;">
+        {% else %}
+            <div style="max-width:320px;width:100%;aspect-ratio:1;background:var(--bg-light);border-radius:4px;"></div>
         {% endif %}
         <div style="flex:1;min-width:240px;">
-            <h1>{{ product.name }}</h1>
+            <h1 style="font-size:1.4em;">{{ product.name }}</h1>
+            <p class="product-sku">{% trans "Арт." %}: {{ product.sku }}</p>
             {% if product.brand %}<p style="color:#666;">{{ product.brand }}{% if product.category %} · {{ product.category }}{% endif %}</p>{% endif %}
             <p class="product-price">{{ product.price }} ₸</p>
             <p>
