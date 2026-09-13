@@ -46,7 +46,7 @@ class Cart(models.Model):
 
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, verbose_name='корзина', related_name='items', on_delete=models.CASCADE)
-    product = models.ForeignKey('shop.Product', verbose_name='товар', on_delete=models.CASCADE)
+    product = models.ForeignKey('products.Product', verbose_name='товар', on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField('количество', default=1)
     added_at = models.DateTimeField('добавлен', auto_now_add=True)
 

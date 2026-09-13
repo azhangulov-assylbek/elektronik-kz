@@ -3,10 +3,11 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from accounts.api_views import LoginView, RegisterView
 from cart.api_views import CartView
 from orders.api_views import OrderViewSet
-from shop.api_views import ProductReviewListCreateView, ProductViewSet
+from products.api_views import ProductViewSet
+from reviews.api_views import ProductReviewListCreateView
+from users.api_views import LoginView, RegisterView
 
 router = DefaultRouter()
 router.register('products', ProductViewSet, basename='product')

@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext
 from django.views.decorators.http import require_POST
 
-from shop.models import Product
+from products.models import Product
 
 from .models import CartItem
 from .utils import get_cart

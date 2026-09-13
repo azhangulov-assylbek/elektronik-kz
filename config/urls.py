@@ -27,10 +27,11 @@ urlpatterns: list[URLPattern | URLResolver] = [
 ]
 
 urlpatterns += i18n_patterns(
-    path('accounts/', include('accounts.urls')),
+    path('users/', include('users.urls')),
     path('cart/', include('cart.urls')),
     path('orders/', include('orders.urls')),
-    path('', include('shop.urls')),
+    path('', include('reviews.urls')),
+    path('', include('products.urls')),
     prefix_default_language=False,
 )
 

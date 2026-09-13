@@ -1,7 +1,8 @@
 from django.db import transaction
 from django.db.models import F
 
-from shop.models import Product
+from payments.services import create_payment
+from products.models import Product
 
 from .models import Order, OrderItem
 
@@ -38,9 +39,10 @@ def create_order_from_cart(*, user, cart, order_data):
                 for item in insufficient
             ])
 
-        order = Order(user=user, **order_data)
-        if order.payment_method == Order.PaymentMethod.CARD:
-            order.status = Order.Status.PAID
+        order_fields = dict(order_data)
+        payment_method = order_fields.pop('payment_method')
+
+        order = Order(user=user, **order_fields)
         order.save()
 
         for item in items:
@@ -56,6 +58,7 @@ def create_order_from_cart(*, user, cart, order_data):
             product.save(update_fields=['stock'])
 
         cart.items.all().delete()
+        create_payment(order, payment_method)
 
     return order
 

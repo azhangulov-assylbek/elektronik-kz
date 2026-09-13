@@ -13,11 +13,16 @@ class OrderItemInline(admin.TabularInline):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'status', 'payment_method', 'revenue', 'created_at')
-    list_filter = ('status', 'payment_method')
+    list_filter = ('status', 'payment__method')
     list_editable = ('status',)
     search_fields = ('id', 'user__email', 'user__phone', 'full_name', 'phone')
     inlines = [OrderItemInline]
     actions = ['mark_confirmed', 'mark_shipped', 'mark_delivered']
+
+    @admin.display(description='Способ оплаты')
+    def payment_method(self, obj):
+        payment = getattr(obj, 'payment', None)
+        return payment.get_method_display() if payment else '—'
 
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(

@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Удалить адрес" %} — elektronik.kz{% endblock %}
+{% block content %}
+    <h1>{% trans "Удалить адрес?" %}</h1>
+    <div class="card" style="max-width:400px;">
+        <p>{{ address }}</p>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">{% trans "Удалить" %}</button>
+            <a href="{% url 'users:addresses' %}" class="btn" style="background:#888;">{% trans "Отмена" %}</a>
+        </form>
+    </div>
+{% endblock %}

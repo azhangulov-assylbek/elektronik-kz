@@ -1,7 +1,6 @@
 import pytest
 from django.urls import reverse
 
-from accounts.models import User
 from cart.models import CartItem
 from orders.models import Order
 from orders.services import (
@@ -11,7 +10,9 @@ from orders.services import (
     cancel_order,
     create_order_from_cart,
 )
-from shop.models import Product
+from payments.models import Payment
+from products.models import Product
+from users.models import User
 
 pytestmark = pytest.mark.django_db
 
@@ -29,7 +30,7 @@ def product():
 ORDER_DATA = {
     'full_name': 'Тест Тестов', 'phone': '+77001234567',
     'city': 'Алматы', 'street': 'Абая', 'house': '1',
-    'payment_method': Order.PaymentMethod.CASH,
+    'payment_method': Payment.Method.CASH,
 }
 
 
@@ -77,7 +78,7 @@ def test_card_payment_marks_order_paid(user, product):
     cart = _cart_with_item(user, product, 1)
 
     order = create_order_from_cart(
-        user=user, cart=cart, order_data={**ORDER_DATA, 'payment_method': Order.PaymentMethod.CARD},
+        user=user, cart=cart, order_data={**ORDER_DATA, 'payment_method': Payment.Method.CARD},
     )
 
     assert order.status == Order.Status.PAID
@@ -109,7 +110,7 @@ def test_checkout_view_requires_login(client, product):
     response = client.get(reverse('orders:checkout'))
 
     assert response.status_code == 302
-    assert '/accounts/login/' in response.url
+    assert '/users/login/' in response.url
 
 
 def test_checkout_view_creates_order(client, user, product):

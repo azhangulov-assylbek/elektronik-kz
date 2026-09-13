@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="{% static 'shop/favicon.svg' %}" type="image/svg+xml">
+    <link rel="icon" href="{% static 'products/favicon.svg' %}" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
@@ -153,21 +153,21 @@
 <body>
 <div class="topbar">
     <div class="topbar-inner">
-        <a href="{% url 'shop:home' %}"><img class="logo" src="{% static 'shop/logo-light.svg' %}" alt="elektronik.kz"></a>
+        <a href="{% url 'products:home' %}"><img class="logo" src="{% static 'products/logo-light.svg' %}" alt="elektronik.kz"></a>
         <div class="topbar-links">
             {% if user.is_authenticated %}
                 <a href="{% url 'orders:list' %}">{% trans "Мои заказы" %}</a>
                 {% if user.can_manage_catalog %}
-                    <a href="{% url 'shop:seller_product_list' %}">{% trans "Панель продавца" %}</a>
+                    <a href="{% url 'products:seller_product_list' %}">{% trans "Панель продавца" %}</a>
                 {% endif %}
-                <a href="{% url 'accounts:profile' %}">{% trans "Личный кабинет" %}</a>
-                <form action="{% url 'accounts:logout' %}" method="post" style="display:inline">
+                <a href="{% url 'users:profile' %}">{% trans "Личный кабинет" %}</a>
+                <form action="{% url 'users:logout' %}" method="post" style="display:inline">
                     {% csrf_token %}
                     <button type="submit">{% trans "Выйти" %}</button>
                 </form>
             {% else %}
-                <a href="{% url 'accounts:login' %}">{% trans "Войти" %}</a>
-                <a href="{% url 'accounts:register' %}">{% trans "Регистрация" %}</a>
+                <a href="{% url 'users:login' %}">{% trans "Войти" %}</a>
+                <a href="{% url 'users:register' %}">{% trans "Регистрация" %}</a>
             {% endif %}
             <form action="{% url 'set_language' %}" method="post" style="display:inline">
                 {% csrf_token %}
@@ -185,8 +185,8 @@
 </div>
 <div class="catalogbar">
     <div class="catalogbar-inner">
-        <a href="{% url 'shop:home' %}" class="catalog-btn">☰ {% trans "Каталог" %}</a>
-        <form action="{% url 'shop:home' %}" method="get" class="search-form">
+        <a href="{% url 'products:home' %}" class="catalog-btn">☰ {% trans "Каталог" %}</a>
+        <form action="{% url 'products:home' %}" method="get" class="search-form">
             <input type="text" name="q" placeholder="{% trans 'Поиск товаров' %}" value="{{ request.GET.q }}">
             <button type="submit">🔍</button>
         </form>
@@ -210,13 +210,13 @@
     <div class="footer-inner">
         <div class="footer-col">
             <h4>{% trans "О компании" %}</h4>
-            <a href="{% url 'shop:home' %}">{% trans "Каталог товаров" %}</a>
-            <a href="{% url 'accounts:register' %}">{% trans "Регистрация" %}</a>
+            <a href="{% url 'products:home' %}">{% trans "Каталог товаров" %}</a>
+            <a href="{% url 'users:register' %}">{% trans "Регистрация" %}</a>
         </div>
         <div class="footer-col">
             <h4>{% trans "Покупателям" %}</h4>
             <a href="{% url 'orders:list' %}">{% trans "Мои заказы" %}</a>
-            <a href="{% url 'accounts:addresses' %}">{% trans "Адреса доставки" %}</a>
+            <a href="{% url 'users:addresses' %}">{% trans "Адреса доставки" %}</a>
         </div>
         <div class="footer-col">
             <h4>{% trans "Способы оплаты" %}</h4>

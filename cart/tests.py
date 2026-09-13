@@ -1,9 +1,9 @@
 import pytest
 from django.urls import reverse
 
-from accounts.models import User
+from users.models import User
 from cart.models import Cart, CartItem
-from shop.models import Product
+from products.models import Product
 
 pytestmark = pytest.mark.django_db
 
@@ -53,7 +53,7 @@ def test_update_cart_item_zero_removes_it(client, product):
 
 
 def test_guest_cart_merges_into_user_cart_on_login(client, user, product):
-    # Реальный POST на /accounts/login/, а не client.force_login() — тот
+    # Реальный POST на /users/login/, а не client.force_login() — тот
     # создаёт синтетический request в обход middleware и не пройдёт через
     # StashSessionKeyMiddleware, из-за которого и работает слияние корзин.
     client.post(reverse('cart:add', args=[product.id]), {'quantity': 2})
@@ -61,7 +61,7 @@ def test_guest_cart_merges_into_user_cart_on_login(client, user, product):
     guest_cart = Cart.objects.get(session_key=session_key)
     assert guest_cart.items.count() == 1
 
-    client.post(reverse('accounts:login'), {'username': user.email, 'password': 'pass12345'})
+    client.post(reverse('users:login'), {'username': user.email, 'password': 'pass12345'})
 
     user_cart = Cart.objects.get(user=user)
     assert user_cart.items.get(product=product).quantity == 2

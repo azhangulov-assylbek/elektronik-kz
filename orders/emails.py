@@ -18,7 +18,7 @@ def send_order_notifications(order: Order) -> None:
         f'Заказ #{order.pk}\n'
         f'Получатель: {order.full_name}, {order.phone}\n'
         f'Адрес: {order.city}, {order.street}, {order.house}\n'
-        f'Способ оплаты: {order.get_payment_method_display()}\n\n'
+        f'Способ оплаты: {order.payment.get_method_display()}\n\n'
         f'{items_text}\n\n'
         f'Итого: {order.total_price} тг.'
     )

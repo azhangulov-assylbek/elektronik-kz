@@ -43,10 +43,12 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_spectacular',
-    'accounts',
-    'shop',
+    'users',
+    'products',
     'cart',
     'orders',
+    'payments',
+    'reviews',
     'api',
 ]
 
@@ -157,16 +159,16 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = 'accounts.User'
+AUTH_USER_MODEL = 'users.User'
 
 AUTHENTICATION_BACKENDS = [
-    'accounts.backends.EmailOrPhoneBackend',
+    'users.backends.EmailOrPhoneBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-LOGIN_URL = 'accounts:login'
-LOGIN_REDIRECT_URL = 'accounts:profile'
-LOGOUT_REDIRECT_URL = 'shop:home'
+LOGIN_URL = 'users:login'
+LOGIN_REDIRECT_URL = 'users:profile'
+LOGOUT_REDIRECT_URL = 'products:home'
 
 
 # Email

@@ -1,2 +1,2 @@
-# Вьюхи API лежат в api_views.py каждого домена (accounts, shop, cart, orders)
+# Вьюхи API лежат в api_views.py каждого домена (users, products, cart, orders, reviews)
 # и подключаются напрямую в api/urls.py.

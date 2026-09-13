@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{{ product.name }} — elektronik.kz{% endblock %}
+{% block content %}
+    <p style="color:#999;font-size:0.85em;">
+        <a href="{% url 'products:home' %}" style="color:#999;">{% trans "Каталог" %}</a>
+        {% if product.category %} / <a href="{% url 'products:home' %}?category={{ product.category.slug }}" style="color:#999;">{{ product.category }}</a>{% endif %}
+        / {{ product.name }}
+    </p>
+    <div class="card" style="display:flex;gap:24px;flex-wrap:wrap;">
+        {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.name }}" style="max-width:320px;width:100%;border-radius:4px;background:var(--bg-light);object-fit:contain;">
+        {% else %}
+            <div style="max-width:320px;width:100%;aspect-ratio:1;background:var(--bg-light);border-radius:4px;"></div>
+        {% endif %}
+        <div style="flex:1;min-width:240px;">
+            <h1 style="font-size:1.4em;">{{ product.name }}</h1>
+            <p class="product-sku">{% trans "Арт." %}: {{ product.sku }}</p>
+            {% if product.brand %}<p style="color:#666;">{{ product.brand }}{% if product.category %} · {{ product.category }}{% endif %}</p>{% endif %}
+            <p class="product-price">{{ product.price }} ₸</p>
+            <p>
+                {% if product.stock > 0 %}
+                    {% blocktrans count counter=product.stock %}В наличии: {{ counter }} шт.{% plural %}В наличии: {{ counter }} шт.{% endblocktrans %}
+                {% else %}
+                    <strong>{% trans "Нет в наличии" %}</strong>
+                {% endif %}
+            </p>
+            <form action="{% url 'cart:add' product.id %}" method="post" style="display:flex;gap:8px;align-items:center;">
+                {% csrf_token %}
+                <input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}" style="width:80px;margin:0;">
+                <button type="submit" class="btn" {% if product.stock == 0 %}disabled{% endif %}>{% trans "В корзину" %}</button>
+            </form>
+            {% if product.description %}<p style="margin-top:16px;">{{ product.description|linebreaks }}</p>{% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>{% trans "Отзывы" %}</h2>
+        {% for review in reviews %}
+            <div style="border-bottom:1px solid #eee;padding:10px 0;">
+                <strong>{{ review.rating }} ★</strong> — {{ review.user }}
+                <p style="color:#666;margin:4px 0 0;">{{ review.comment }}</p>
+            </div>
+        {% empty %}
+            <p>{% trans "Отзывов пока нет." %}</p>
+        {% endfor %}
+
+        {% if can_review %}
+            <h3 style="margin-top:16px;">{% trans "Оставить отзыв" %}</h3>
+            <form action="{% url 'reviews:add_review' product.slug %}" method="post" style="max-width:400px;">
+                {% csrf_token %}
+                {{ review_form.as_p }}
+                <button type="submit" class="btn">{% trans "Отправить" %}</button>
+            </form>
+        {% elif has_reviewed %}
+            <p style="color:#666;margin-top:16px;">{% trans "Вы уже оставили отзыв на этот товар." %}</p>
+        {% elif user.is_authenticated %}
+            <p style="color:#666;margin-top:16px;">{% trans "Оставить отзыв можно после покупки этого товара." %}</p>
+        {% endif %}
+    </div>
+{% endblock %}

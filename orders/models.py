@@ -12,18 +12,11 @@ class Order(models.Model):
         DELIVERED = 'delivered', _('Доставлен')
         CANCELLED = 'cancelled', _('Отменён')
 
-    class PaymentMethod(models.TextChoices):
-        CARD = 'card', _('Картой онлайн')
-        CASH = 'cash', _('Наличными при получении')
-
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name=_('пользователь'),
         related_name='orders', on_delete=models.CASCADE,
     )
     status = models.CharField(_('статус'), max_length=20, choices=Status.choices, default=Status.NEW)
-    payment_method = models.CharField(
-        _('способ оплаты'), max_length=20, choices=PaymentMethod.choices, default=PaymentMethod.CASH,
-    )
     full_name = models.CharField(_('получатель'), max_length=200)
     phone = models.CharField(_('телефон'), max_length=20)
     city = models.CharField(_('город'), max_length=100)
@@ -48,7 +41,7 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, verbose_name=_('заказ'), related_name='items', on_delete=models.CASCADE)
-    product = models.ForeignKey('shop.Product', verbose_name=_('товар'), on_delete=models.PROTECT)
+    product = models.ForeignKey('products.Product', verbose_name=_('товар'), on_delete=models.PROTECT)
     product_name = models.CharField(_('название товара'), max_length=255)
     price = models.DecimalField(_('цена'), max_digits=12, decimal_places=2)
     quantity = models.PositiveIntegerField(_('количество'), default=1)

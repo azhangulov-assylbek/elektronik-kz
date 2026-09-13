@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Каталог" %} — elektronik.kz{% endblock %}
+{% block content %}
+
+    {% if not request.GET.q and not request.GET.category and not price_min and not price_max %}
+        <div class="hero">
+            <h1>{% trans "Электроника и техника с доставкой по Казахстану" %}</h1>
+            <p>{% trans "Ноутбуки, смартфоны и аксессуары от проверенных брендов" %}</p>
+            <a href="#catalog" class="btn">{% trans "Смотреть каталог" %}</a>
+        </div>
+
+        <div class="features-row">
+            <div class="feature">
+                <span class="feature-icon">🚚</span>
+                <div><strong>{% trans "Доставка" %}</strong><span>{% trans "По всему Казахстану" %}</span></div>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">💳</span>
+                <div><strong>{% trans "Оплата" %}</strong><span>{% trans "Картой или наличными" %}</span></div>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">↩️</span>
+                <div><strong>{% trans "Возврат" %}</strong><span>{% trans "В течение 14 дней" %}</span></div>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🎧</span>
+                <div><strong>{% trans "Поддержка" %}</strong><span>{% trans "Отвечаем быстро" %}</span></div>
+            </div>
+        </div>
+    {% endif %}
+
+    <h2 class="section-title" id="catalog">{% trans "Каталог товаров" %}</h2>
+
+    <form method="get" class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+        <div style="flex:1;min-width:180px;">
+            <label>{% trans "Поиск" %}</label>
+            <input type="text" name="q" value="{{ query }}" placeholder="{% trans 'Название или описание' %}">
+        </div>
+        <div style="min-width:160px;">
+            <label>{% trans "Категория" %}</label>
+            <select name="category">
+                <option value="">{% trans "Все" %}</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.slug }}" {% if current_category.slug == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="min-width:110px;">
+            <label>{% trans "Цена от" %}</label>
+            <input type="number" name="price_min" value="{{ price_min }}">
+        </div>
+        <div style="min-width:110px;">
+            <label>{% trans "Цена до" %}</label>
+            <input type="number" name="price_max" value="{{ price_max }}">
+        </div>
+        <div style="min-width:160px;">
+            <label>{% trans "Сортировка" %}</label>
+            <select name="sort">
+                <option value="new" {% if sort == 'new' %}selected{% endif %}>{% trans "Сначала новые" %}</option>
+                <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>{% trans "Цена: по возрастанию" %}</option>
+                <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>{% trans "Цена: по убыванию" %}</option>
+                <option value="popular" {% if sort == 'popular' %}selected{% endif %}>{% trans "Популярные" %}</option>
+            </select>
+        </div>
+        <div>
+            <button type="submit" class="btn">{% trans "Применить" %}</button>
+        </div>
+    </form>
+
+    {% if products %}
+        <div class="grid">
+            {% for product in products %}
+                {% include 'products/_product_card.html' %}
+            {% endfor %}
+        </div>
+
+        {% if is_paginated %}
+            <div class="card" style="display:flex;gap:12px;justify-content:center;">
+                {% if page_obj.has_previous %}
+                    <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}">← {% trans "Назад" %}</a>
+                {% endif %}
+                <span>{% blocktrans with num=page_obj.number total=page_obj.paginator.num_pages %}Страница {{ num }} из {{ total }}{% endblocktrans %}</span>
+                {% if page_obj.has_next %}
+                    <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}">{% trans "Вперёд" %} →</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <p>{% trans "Ничего не найдено." %}</p>
+    {% endif %}
+
+    {% if categories %}
+        <h2 class="section-title">{% trans "Категории" %}</h2>
+        <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));">
+            {% for cat in categories %}
+                <a href="?category={{ cat.slug }}" class="category-tile">
+                    <span class="category-icon">📦</span>
+                    {{ cat.name }}
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endblock %}

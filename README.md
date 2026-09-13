@@ -75,7 +75,7 @@ curl -X POST http://localhost:8000/api/users/token/refresh/ \
 ## Роли: продавец и администратор
 
 Три роли пользователя: покупатель (по умолчанию), продавец, администратор
-(`accounts.User.role`).
+(`users.User.role`).
 
 - **Продавец** — карточки товаров на самом сайте: `/seller/products/`
   (список), добавление и редактирование товара через форму. Каталог общий —
@@ -83,7 +83,7 @@ curl -X POST http://localhost:8000/api/users/token/refresh/ \
   появляется в шапке сайта после входа.
 - **Администратор** — массовая загрузка каталога файлом (CSV или .xlsx)
   прямо в Django admin: кнопка «Импортировать каталог» на странице
-  `/admin/shop/product/`. Обязательные колонки — `name`, `sku`, `price`;
+  `/admin/products/product/`. Обязательные колонки — `name`, `sku`, `price`;
   необязательные — `category`, `brand`, `description`, `stock`, `is_active`.
   Товар ищется по артикулу (`sku`): существующий — обновится, новый —
   создастся; категория и бренд создаются автоматически по названию из файла.
@@ -97,7 +97,7 @@ curl -X POST http://localhost:8000/api/users/token/refresh/ \
 Пароль продавца при разворачивании создайте сами через `manage.py shell`,
 например:
 ```python
-from accounts.models import User
+from users.models import User
 User.objects.create_user(email='seller@elektronik.kz', password='...', role=User.Role.SELLER)
 ```
 
@@ -106,7 +106,7 @@ User.objects.create_user(email='seller@elektronik.kz', password='...', role=User
 ```bash
 pip install -r requirements-dev.txt
 
-pytest                 # 50 тестов: каталог, корзина, заказы, auth, API, роли
+pytest                 # 52 теста: каталог, корзина, заказы, оплата, auth, API, роли
 flake8 .
 mypy .
 ```
@@ -141,12 +141,19 @@ with open('locale/kk/LC_MESSAGES/django.mo', 'wb') as f:
 
 ## Структура
 
+Названия приложений синхронизированы с проектом группы на курсе (другой
+репозиторий, ведёт наставник) — `products`/`payments`/`reviews`/`users`
+совпадают, чтобы сравнение и код-ревью между проектами было проще; конкретная
+реализация внутри — своя, не скопирована.
+
 - `config/` — настройки и корневой urlconf проекта Django
-- `shop/` — каталог товаров (Product/Category/Brand/Review), веб-вьюхи + `api_views.py`,
+- `products/` — каталог товаров (Product/Category/Brand), веб-вьюхи + `api_views.py`,
   карточки товаров продавца (`seller_views.py`), импорт каталога файлом (`catalog_import.py`)
-- `accounts/` — пользователи (вход по email/телефону), адреса, личный кабинет
+- `users/` — пользователи (вход по email/телефону), адреса, личный кабинет
 - `cart/` — корзина (гостевая на сессии + привязка к пользователю)
-- `orders/` — заказы, мок оплаты, email-уведомления, бизнес-логика в `services.py`
+- `orders/` — заказы, email-уведомления, бизнес-логика в `services.py`
+- `payments/` — оплата заказа (мок): `Payment` (способ/статус), `services.py:create_payment`
+- `reviews/` — отзывы на товары (только после покупки)
 - `api/` — сборка urls.py для REST API (сериализаторы и вьюхи лежат в каждом
   домене рядом с моделями — `<app>/serializers.py`, `<app>/api_views.py`)
 - `locale/` — переводы интерфейса (казахский)

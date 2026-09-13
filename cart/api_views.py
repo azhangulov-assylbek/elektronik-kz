@@ -2,7 +2,7 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from shop.models import Product
+from products.models import Product
 
 from .models import CartItem
 from .serializers import CartSerializer

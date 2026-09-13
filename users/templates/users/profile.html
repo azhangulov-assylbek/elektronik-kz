@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Личный кабинет" %} — elektronik.kz{% endblock %}
+{% block content %}
+    <h1>{% trans "Личный кабинет" %}</h1>
+    <div class="card" style="max-width:400px;">
+        <h3>{% trans "Мои данные" %}</h3>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn">{% trans "Сохранить" %}</button>
+        </form>
+        <p style="margin-top:12px;"><a href="{% url 'users:password_change' %}">{% trans "Сменить пароль" %} →</a></p>
+    </div>
+    <div class="card">
+        <h3>{% trans "Адреса доставки" %}</h3>
+        <p><a href="{% url 'users:addresses' %}">{% trans "Управлять адресами" %} →</a></p>
+    </div>
+    <div class="card">
+        <h3>{% trans "Заказы" %}</h3>
+        <p><a href="{% url 'orders:list' %}">{% trans "Мои заказы" %} →</a></p>
+    </div>
+    <div class="card">
+        <h3>{% trans "Корзина" %}</h3>
+        <p><a href="{% url 'cart:detail' %}">{% trans "Перейти в корзину" %} →</a></p>
+    </div>
+{% endblock %}

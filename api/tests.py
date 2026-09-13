@@ -1,9 +1,9 @@
 import pytest
 from django.urls import reverse
 
-from accounts.models import User
 from orders.models import Order
-from shop.models import Product
+from products.models import Product
+from users.models import User
 
 pytestmark = pytest.mark.django_db
 

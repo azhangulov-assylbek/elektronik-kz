@@ -5,7 +5,7 @@
     <h1>{% trans "Заказ" %} #{{ order.id }}</h1>
     <div class="card">
         <p><strong>{% trans "Статус" %}:</strong> {{ order.get_status_display }}</p>
-        <p><strong>{% trans "Способ оплаты" %}:</strong> {{ order.get_payment_method_display }}</p>
+        <p><strong>{% trans "Способ оплаты" %}:</strong> {{ order.payment.get_method_display }}</p>
         <p><strong>{% trans "Получатель" %}:</strong> {{ order.full_name }}, {{ order.phone }}</p>
         <p><strong>{% trans "Адрес" %}:</strong> {{ order.city }}, {{ order.street }}, {{ order.house }}{% if order.apartment %}, {% trans "кв." %} {{ order.apartment }}{% endif %}</p>
         {% if order.comment %}<p><strong>{% trans "Комментарий" %}:</strong> {{ order.comment }}</p>{% endif %}

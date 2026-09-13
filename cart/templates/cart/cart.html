@@ -41,6 +41,6 @@
             </div>
         </div>
     {% else %}
-        <p>{% trans "Корзина пуста." %} <a href="{% url 'shop:home' %}">{% trans "Перейти в каталог" %}</a></p>
+        <p>{% trans "Корзина пуста." %} <a href="{% url 'products:home' %}">{% trans "Перейти в каталог" %}</a></p>
     {% endif %}
 {% endblock %}
