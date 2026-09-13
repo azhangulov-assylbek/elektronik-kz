@@ -9,7 +9,7 @@
 ## Стек
 
 - Python 3.13, Django 6.1, Django REST Framework, SimpleJWT, drf-spectacular
-- PostgreSQL (через Docker Compose) / SQLite (локально без Docker)
+- PostgreSQL — единственная поддерживаемая БД (через Docker Compose или локально)
 - Русский и казахский языки интерфейса
 - pytest-django, flake8, mypy (django-stubs)
 
@@ -23,19 +23,25 @@ docker compose up --build
 Приложение поднимется на `http://localhost:8000/`, миграции применяются
 автоматически при старте контейнера `web`, база — PostgreSQL в контейнере `db`.
 
-## Запуск без Docker
+## Запуск без Docker (Postgres поднимаем отдельно)
+
+PostgreSQL — единственная поддерживаемая БД, SQLite-фолбэка нет. Проще
+всего поднять только контейнер с базой и запускать Django на хосте:
 
 ```bash
-python -m venv .venv
-source .venv/Scripts/activate   # Windows (Git Bash); .venv\Scripts\activate на cmd
-pip install -r requirements.txt
 cp .env.example .env
+docker compose up -d db          # только PostgreSQL, порт 5432 на хосте
+
+python -m venv .venv
+source .venv/Scripts/activate    # Windows (Git Bash); .venv\Scripts\activate на cmd
+pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
 ```
 
-Без переменной `POSTGRES_HOST` в окружении Django автоматически использует
-SQLite — Postgres не обязателен для локальной разработки без Docker.
+Значения в `.env.example` (`POSTGRES_HOST=localhost` и т.д.) рассчитаны
+именно на этот сценарий. Вместо `docker compose up -d db` подойдёт и
+локально установленный PostgreSQL с теми же реквизитами.
 
 ## REST API и JWT
 
@@ -162,7 +168,7 @@ with open('locale/kk/LC_MESSAGES/django.mo', 'wb') as f:
 ## Чек-лист по ТЗ
 
 - [x] Проект запускается через Docker Compose (проверено: `db` + `web` поднимаются, миграции применяются к реальному PostgreSQL)
-- [x] PostgreSQL используется (в Docker; SQLite — фолбэк для локальной разработки)
+- [x] PostgreSQL используется (единственная БД — в Docker и локально, SQLite убран)
 - [x] Каталог: фильтры (категория, цена), поиск, сортировка, пагинация
 - [x] Страница товара: детали, отзывы (только после покупки), добавление в корзину
 - [x] Корзина: управление, расчёт, проверка остатков (клиент + сервер)

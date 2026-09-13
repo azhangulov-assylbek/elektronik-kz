@@ -88,27 +88,22 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
-# POSTGRES_HOST задаётся в Docker Compose; без него (локальная разработка
-# без Docker) используется SQLite.
+# PostgreSQL — единственная поддерживаемая БД проекта (SQLite убран).
+# В Docker Compose POSTGRES_HOST=db (имя сервиса в сети контейнеров);
+# для локальной разработки без Docker по умолчанию используется localhost —
+# поднимите Postgres командой `docker compose up -d db` (порт 5432
+# опубликован на хост) или запустите Postgres локально с теми же реквизитами.
 
-if os.environ.get('POSTGRES_HOST'):
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('POSTGRES_DB', 'elektronik'),
-            'USER': os.environ.get('POSTGRES_USER', 'elektronik'),
-            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'elektronik'),
-            'HOST': os.environ.get('POSTGRES_HOST'),
-            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
-        }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('POSTGRES_DB', 'elektronik'),
+        'USER': os.environ.get('POSTGRES_USER', 'elektronik'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'elektronik'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': str(BASE_DIR / 'db.sqlite3'),
-        }
-    }
+}
 
 
 # Password validation
