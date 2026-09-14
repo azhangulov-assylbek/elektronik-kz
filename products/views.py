@@ -1,4 +1,4 @@
-from django.db.models import Count, Q
+from django.db.models import Avg, Count, Q
 from django.views.generic import DetailView, ListView
 
 from reviews.forms import ReviewForm
@@ -10,51 +10,55 @@ class ProductListView(ListView):
     model = Product
     template_name = 'products/home.html'
     context_object_name = 'products'
-    paginate_by = 8
-
-    SORT_OPTIONS = {
-        'new': '-created_at',
-        'price_asc': 'price',
-        'price_desc': '-price',
-        'popular': '-orders_count',
-    }
+    paginate_by = 9
 
     def get_queryset(self):
-        qs = Product.objects.active().select_related('category', 'brand')
-        qs = qs.annotate(orders_count=Count('orderitem'))
+        qs = (
+            Product.objects.active()
+            .select_related('category', 'brand')
+            .annotate(avg_rating=Avg('reviews__rating'), orders_count=Count('orderitem'))
+        )
 
-        self.category = None
-        category_slug = self.request.GET.get('category')
-        if category_slug:
-            self.category = Category.objects.filter(slug=category_slug).first()
-            if self.category:
-                qs = qs.filter(category=self.category)
-
-        query = self.request.GET.get('q', '').strip()
+        query = self.request.GET.get('q')
         if query:
             qs = qs.filter(Q(name__icontains=query) | Q(description__icontains=query))
 
-        price_min = self.request.GET.get('price_min')
-        if price_min:
-            qs = qs.filter(price__gte=price_min)
+        categories = self.request.GET.getlist('category')
+        if categories:
+            qs = qs.filter(category__slug__in=categories)
 
-        price_max = self.request.GET.get('price_max')
-        if price_max:
-            qs = qs.filter(price__lte=price_max)
+        min_price = self.request.GET.get('min_price')
+        max_price = self.request.GET.get('max_price')
 
+        if min_price:
+            qs = qs.filter(price__gte=min_price)
+
+        if max_price:
+            qs = qs.filter(price__lte=max_price)
+
+        sort_map = {
+            'new': '-created_at',
+            'price_asc': 'price',
+            'price_desc': '-price',
+            'popular': '-orders_count',
+            'rating': '-avg_rating',
+        }
         sort = self.request.GET.get('sort', 'new')
-        qs = qs.order_by(self.SORT_OPTIONS.get(sort, self.SORT_OPTIONS['new']))
-        return qs
+        return qs.order_by(sort_map.get(sort, '-created_at'))
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['categories'] = Category.objects.all()
-        context['current_category'] = self.category
-        context['query'] = self.request.GET.get('q', '')
-        context['sort'] = self.request.GET.get('sort', 'new')
-        context['price_min'] = self.request.GET.get('price_min', '')
-        context['price_max'] = self.request.GET.get('price_max', '')
-        return context
+        ctx = super().get_context_data(**kwargs)
+        ctx['categories'] = Category.objects.all()
+        ctx['query'] = self.request.GET.get('q', '')
+        ctx['min_price'] = self.request.GET.get('min_price', '')
+        ctx['max_price'] = self.request.GET.get('max_price', '')
+        ctx['selected_categories'] = self.request.GET.getlist('category')
+        ctx['current_sort'] = self.request.GET.get('sort', 'new')
+
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        ctx['querystring'] = params.urlencode()
+        return ctx
 
 
 class ProductDetailView(DetailView):
@@ -63,15 +67,18 @@ class ProductDetailView(DetailView):
     context_object_name = 'product'
 
     def get_queryset(self):
-        return Product.objects.active().select_related('category', 'brand')
+        return (
+            Product.objects.active()
+            .select_related('category', 'brand')
+            .annotate(avg_rating=Avg('reviews__rating'))
+        )
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+        ctx = super().get_context_data(**kwargs)
         product = self.object
-        context['reviews'] = product.reviews.select_related('user')
-        context['has_purchased'] = product.user_has_purchased(self.request.user)
-        context['has_reviewed'] = product.user_has_reviewed(self.request.user)
-        context['can_review'] = context['has_purchased'] and not context['has_reviewed']
-        if context['can_review']:
-            context['review_form'] = ReviewForm()
-        return context
+        ctx['reviews'] = product.reviews.select_related('user')
+        ctx['has_purchased'] = product.user_has_purchased(self.request.user)
+        ctx['has_reviewed'] = product.user_has_reviewed(self.request.user)
+        ctx['can_review'] = ctx['has_purchased'] and not ctx['has_reviewed']
+        ctx['review_form'] = ReviewForm() if ctx['can_review'] else None
+        return ctx

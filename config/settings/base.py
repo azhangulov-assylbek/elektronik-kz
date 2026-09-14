@@ -12,23 +12,28 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 import os
 from pathlib import Path
+from os import getenv
+
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# .env не подхватывается автоматически — грузим его здесь, а не только в
+# manage.py/wsgi.py, чтобы pytest, mypy (django-stubs) и любые другие точки
+# входа, которые импортируют настройки напрямую (минуя manage.py), тоже
+# видели переменные окружения.
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    'SECRET_KEY', 'django-insecure-_-8r*ph_3f8mwq_*rw)9_czakiikxnn(#mwg!sd*x97=14i+8b',
-)
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
+
 
 
 # Application definition
@@ -40,15 +45,20 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+]
+INSTALLED_APPS += [
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_spectacular',
+]
+INSTALLED_APPS += [
     'users',
     'products',
     'cart',
     'orders',
     'payments',
     'reviews',
+    'bulk_import',
     'api',
 ]
 
@@ -85,25 +95,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/6.1/ref/settings/#databases
-# PostgreSQL — единственная поддерживаемая БД проекта (SQLite убран).
-# В Docker Compose POSTGRES_HOST=db (имя сервиса в сети контейнеров);
-# для локальной разработки без Docker по умолчанию используется localhost —
-# поднимите Postgres командой `docker compose up -d db` (порт 5432
-# опубликован на хост) или запустите Postgres локально с теми же реквизитами.
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('POSTGRES_DB', 'elektronik'),
-        'USER': os.environ.get('POSTGRES_USER', 'elektronik'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'elektronik'),
-        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
-        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
-    }
-}
 
 
 # Password validation

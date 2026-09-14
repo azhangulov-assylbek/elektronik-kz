@@ -3,7 +3,7 @@
 {% block title %}{% trans "Каталог" %} — elektronik.kz{% endblock %}
 {% block content %}
 
-    {% if not request.GET.q and not request.GET.category and not price_min and not price_max %}
+    {% if not request.GET.q and not request.GET.category and not min_price and not max_price %}
         <div class="hero">
             <h1>{% trans "Электроника и техника с доставкой по Казахстану" %}</h1>
             <p>{% trans "Ноутбуки, смартфоны и аксессуары от проверенных брендов" %}</p>
@@ -42,25 +42,26 @@
             <select name="category">
                 <option value="">{% trans "Все" %}</option>
                 {% for cat in categories %}
-                    <option value="{{ cat.slug }}" {% if current_category.slug == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
+                    <option value="{{ cat.slug }}" {% if cat.slug in selected_categories %}selected{% endif %}>{{ cat.name }}</option>
                 {% endfor %}
             </select>
         </div>
         <div style="min-width:110px;">
             <label>{% trans "Цена от" %}</label>
-            <input type="number" name="price_min" value="{{ price_min }}">
+            <input type="number" name="min_price" value="{{ min_price }}">
         </div>
         <div style="min-width:110px;">
             <label>{% trans "Цена до" %}</label>
-            <input type="number" name="price_max" value="{{ price_max }}">
+            <input type="number" name="max_price" value="{{ max_price }}">
         </div>
         <div style="min-width:160px;">
             <label>{% trans "Сортировка" %}</label>
             <select name="sort">
-                <option value="new" {% if sort == 'new' %}selected{% endif %}>{% trans "Сначала новые" %}</option>
-                <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>{% trans "Цена: по возрастанию" %}</option>
-                <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>{% trans "Цена: по убыванию" %}</option>
-                <option value="popular" {% if sort == 'popular' %}selected{% endif %}>{% trans "Популярные" %}</option>
+                <option value="new" {% if current_sort == 'new' %}selected{% endif %}>{% trans "Сначала новые" %}</option>
+                <option value="price_asc" {% if current_sort == 'price_asc' %}selected{% endif %}>{% trans "Цена: по возрастанию" %}</option>
+                <option value="price_desc" {% if current_sort == 'price_desc' %}selected{% endif %}>{% trans "Цена: по убыванию" %}</option>
+                <option value="popular" {% if current_sort == 'popular' %}selected{% endif %}>{% trans "Популярные" %}</option>
+                <option value="rating" {% if current_sort == 'rating' %}selected{% endif %}>{% trans "По рейтингу" %}</option>
             </select>
         </div>
         <div>
@@ -78,11 +79,11 @@
         {% if is_paginated %}
             <div class="card" style="display:flex;gap:12px;justify-content:center;">
                 {% if page_obj.has_previous %}
-                    <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}">← {% trans "Назад" %}</a>
+                    <a href="?{{ querystring }}&page={{ page_obj.previous_page_number }}">← {% trans "Назад" %}</a>
                 {% endif %}
                 <span>{% blocktrans with num=page_obj.number total=page_obj.paginator.num_pages %}Страница {{ num }} из {{ total }}{% endblocktrans %}</span>
                 {% if page_obj.has_next %}
-                    <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}">{% trans "Вперёд" %} →</a>
+                    <a href="?{{ querystring }}&page={{ page_obj.next_page_number }}">{% trans "Вперёд" %} →</a>
                 {% endif %}
             </div>
         {% endif %}

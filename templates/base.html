@@ -159,6 +159,10 @@
                 <a href="{% url 'orders:list' %}">{% trans "Мои заказы" %}</a>
                 {% if user.can_manage_catalog %}
                     <a href="{% url 'products:seller_product_list' %}">{% trans "Панель продавца" %}</a>
+                    <a href="{% url 'bulk_import:batch_list' %}">{% trans "Импорт каталога" %}</a>
+                {% endif %}
+                {% if user.can_bulk_import_catalog %}
+                    <a href="{% url 'bulk_import:moderation_list' %}">{% trans "Модерация импортов" %}</a>
                 {% endif %}
                 <a href="{% url 'users:profile' %}">{% trans "Личный кабинет" %}</a>
                 <form action="{% url 'users:logout' %}" method="post" style="display:inline">

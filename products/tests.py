@@ -46,7 +46,7 @@ def admin_role_user():
 def test_catalog_filters_by_price(client, product, category, brand):
     Product.objects.create(name='Дешёвый', sku='SKU-2', category=category, brand=brand, price=10000, stock=1)
 
-    response = client.get(reverse('products:home'), {'price_max': 100000})
+    response = client.get(reverse('products:home'), {'max_price': 100000})
 
     assert response.status_code == 200
     names = [p.name for p in response.context['products']]

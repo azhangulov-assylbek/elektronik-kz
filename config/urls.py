@@ -19,6 +19,7 @@ from django.conf.urls.i18n import i18n_patterns
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import URLPattern, URLResolver, include, path
+from config.settings.development import DEBUG
 
 urlpatterns: list[URLPattern | URLResolver] = [
     path('admin/', admin.site.urls),
@@ -32,8 +33,9 @@ urlpatterns += i18n_patterns(
     path('orders/', include('orders.urls')),
     path('', include('reviews.urls')),
     path('', include('products.urls')),
+    path('seller/import/', include('bulk_import.urls')),
     prefix_default_language=False,
 )
 
-if settings.DEBUG:
+if DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

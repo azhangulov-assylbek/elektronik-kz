@@ -17,15 +17,17 @@ services:
 
   web:
     build: .
-    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
+    # Docker — только прод-конфигурация (config.settings.prod, PostgreSQL).
+    # Локальная разработка запускается на хосте без Docker, на
+    # config.settings.development (SQLite) — см. manage.py.
+    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000 --insecure"
     volumes:
-      - .:/app
       - media:/app/media
     ports:
       - "8000:8000"
     environment:
-      SECRET_KEY: ${SECRET_KEY:-django-insecure-dev-key}
-      DEBUG: ${DEBUG:-True}
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-dev-key}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
       POSTGRES_DB: ${POSTGRES_DB:-elektronik}
       POSTGRES_USER: ${POSTGRES_USER:-elektronik}
