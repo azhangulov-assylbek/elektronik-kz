@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Модерация импортов" %} — elektronik.kz{% endblock %}
+{% block content %}
+    <h1>{% trans "Импорты на модерации" %}</h1>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>№</th><th>{% trans "Продавец" %}</th><th>{% trans "Файл" %}</th>
+                    <th>{% trans "Товаров" %}</th><th>{% trans "Загружен" %}</th><th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for batch in batches %}
+                <tr>
+                    <td>{{ batch.id }}</td>
+                    <td>{{ batch.seller }}</td>
+                    <td>{{ batch.file.name }}</td>
+                    <td>{{ batch.rows.count }}</td>
+                    <td>{{ batch.created_at|date:"d.m.Y H:i" }}</td>
+                    <td><a href="{% url 'bulk_import:moderation_detail' batch.pk %}">{% trans "Просмотреть" %}</a></td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6">{% trans "Нет импортов на модерации." %}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

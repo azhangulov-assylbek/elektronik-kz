@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Импорт каталога" %} — elektronik.kz{% endblock %}
+{% block content %}
+    <h1>{% trans "Импорт каталога" %}</h1>
+    <p>
+        <a href="{% url 'products:seller_product_list' %}">← {% trans "Панель продавца" %}</a>
+        &nbsp;·&nbsp;
+        <a href="{% url 'bulk_import:batch_upload' %}" class="btn">+ {% trans "Загрузить файл" %}</a>
+    </p>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>№</th><th>{% trans "Файл" %}</th><th>{% trans "Статус" %}</th>
+                    <th>{% trans "Загружен" %}</th><th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for batch in batches %}
+                <tr>
+                    <td>{{ batch.id }}</td>
+                    <td>{{ batch.file.name }}</td>
+                    <td>
+                        {{ batch.get_status_display }}
+                        {% if batch.status == 'rejected' and batch.rejection_reason %}
+                            <br><span style="color:#8a1f1f;font-size:0.85em;">{{ batch.rejection_reason }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ batch.created_at|date:"d.m.Y H:i" }}</td>
+                    <td>
+                        {% if batch.status == 'uploaded' %}
+                            <a href="{% url 'bulk_import:batch_map' batch.pk %}">{% trans "Сопоставить колонки" %}</a>
+                        {% elif batch.status == 'mapped' %}
+                            <a href="{% url 'bulk_import:batch_preview' batch.pk %}">{% trans "Проверить данные" %}</a>
+                        {% elif batch.status == 'images_pending' %}
+                            <a href="{% url 'bulk_import:batch_images' batch.pk %}">{% trans "Загрузить картинки" %}</a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5">{% trans "Импортов пока нет." %}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

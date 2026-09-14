@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Проверка данных" %} — elektronik.kz{% endblock %}
+{% block content %}
+    <p><a href="{% url 'bulk_import:batch_list' %}">← {% trans "К списку импортов" %}</a></p>
+    <h1>{% trans "Проверка данных перед загрузкой" %}</h1>
+    <p style="color:#666;">{% trans "Файл преобразован по вашему сопоставлению колонок. Проверьте данные — после подтверждения товары будут созданы (пока не видны в каталоге, до одобрения администратором)." %}</p>
+
+    <div class="card" style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>№</th>
+                    {% for label in field_labels %}<th>{{ label }}</th>{% endfor %}
+                    <th>{% trans "Ошибка" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row, values in rows_with_values %}
+                <tr {% if row.error %}style="background:#fde8e8;"{% endif %}>
+                    <td>{{ row.row_number }}</td>
+                    {% for value in values %}<td>{{ value|default:"—" }}</td>{% endfor %}
+                    <td>{{ row.error }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="10">{% trans "Строк не найдено." %}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn">{% trans "Подтвердить и создать товары" %}</button>
+    </form>
+{% endblock %}

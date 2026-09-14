@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Сопоставление колонок" %} — elektronik.kz{% endblock %}
+{% block content %}
+    <p><a href="{% url 'bulk_import:batch_list' %}">← {% trans "К списку импортов" %}</a></p>
+    <h1>{% trans "Сопоставление колонок" %}</h1>
+    <p style="color:#666;">{% trans "Выберите, какому полю товара соответствует каждая колонка файла. Показаны первые строки для примера." %}</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="card" style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        {% for header in headers %}<th>{{ header|default:"—" }}</th>{% endfor %}
+                    </tr>
+                    <tr>
+                        {% for header, field in columns %}<th>{{ field }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in preview_rows %}
+                    <tr>
+                        {% for cell in row %}<td>{{ cell|default:"—" }}</td>{% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <button type="submit" class="btn">{% trans "Подтвердить сопоставление" %}</button>
+    </form>
+{% endblock %}

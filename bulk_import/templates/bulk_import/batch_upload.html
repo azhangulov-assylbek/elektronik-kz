@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Загрузка файла" %} — elektronik.kz{% endblock %}
+{% block content %}
+    <p><a href="{% url 'bulk_import:batch_list' %}">← {% trans "К списку импортов" %}</a></p>
+    <h1>{% trans "Загрузка файла каталога" %}</h1>
+    <div class="card" style="max-width:480px;">
+        <p style="color:#666;font-size:0.9em;">
+            {% trans "Загрузите CSV или Excel (.xlsx). На следующем шаге нужно будет сопоставить колонки файла с полями товара." %}
+        </p>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn">{% trans "Загрузить" %}</button>
+        </form>
+    </div>
+{% endblock %}

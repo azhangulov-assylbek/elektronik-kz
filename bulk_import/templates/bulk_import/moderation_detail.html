@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Модерация импорта" %} #{{ batch.id }} — elektronik.kz{% endblock %}
+{% block content %}
+    <p><a href="{% url 'bulk_import:moderation_list' %}">← {% trans "К списку импортов" %}</a></p>
+    <h1>{% trans "Импорт" %} #{{ batch.id }} — {{ batch.seller }}</h1>
+
+    <div class="grid">
+        {% for row in rows %}
+            <div class="card">
+                {% if row.product.image %}
+                    <img src="{{ row.product.image.url }}" alt="{{ row.product.name }}" style="width:100%;aspect-ratio:1;object-fit:contain;background:var(--bg-light);border-radius:4px;">
+                {% endif %}
+                <p style="font-weight:500;margin:10px 0 4px;">{{ row.product.name }}</p>
+                <p class="product-sku">{% trans "Арт." %}: {{ row.product.sku }}</p>
+                <p class="product-price">{{ row.product.price }} ₸</p>
+                <p style="color:#666;font-size:0.85em;">{{ row.product.category|default:"—" }} · {{ row.product.brand|default:"—" }} · {% trans "остаток" %}: {{ row.product.stock }}</p>
+            </div>
+        {% empty %}
+            <p>{% trans "Товаров в этом импорте нет." %}</p>
+        {% endfor %}
+    </div>
+
+    <div class="card" style="display:flex;gap:24px;flex-wrap:wrap;">
+        <form method="post" style="display:inline">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="approve">
+            <button type="submit" class="btn">{% trans "Одобрить и опубликовать" %}</button>
+        </form>
+
+        <form method="post" style="display:inline;flex:1;min-width:260px;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reject">
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-danger">{% trans "Отклонить" %}</button>
+        </form>
+    </div>
+{% endblock %}

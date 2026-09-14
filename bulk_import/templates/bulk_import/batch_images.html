@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Картинки товаров" %} — elektronik.kz{% endblock %}
+{% block content %}
+    <p><a href="{% url 'bulk_import:batch_list' %}">← {% trans "К списку импортов" %}</a></p>
+    <h1>{% trans "Загрузите картинку для каждого товара" %}</h1>
+    <p style="color:#666;">{% trans "Отправить на модерацию можно только после того, как у всех товаров будет картинка." %}</p>
+
+    <div class="grid">
+        {% for row in rows %}
+            <div class="card" style="display:flex;flex-direction:column;">
+                {% if row.product.image %}
+                    <img src="{{ row.product.image.url }}" alt="{{ row.product.name }}" style="width:100%;aspect-ratio:1;object-fit:contain;background:var(--bg-light);border-radius:4px;">
+                {% else %}
+                    <div style="width:100%;aspect-ratio:1;background:var(--bg-light);border-radius:4px;"></div>
+                {% endif %}
+                <p style="font-weight:500;margin:10px 0 4px;">{{ row.product.name }}</p>
+                <p class="product-sku">{% trans "Арт." %}: {{ row.product.sku }}</p>
+                <form method="post" action="{% url 'bulk_import:batch_image_upload' batch.pk row.pk %}" enctype="multipart/form-data" style="margin-top:auto;">
+                    {% csrf_token %}
+                    <input type="file" name="image" accept="image/*" required>
+                    <button type="submit" class="btn" style="width:100%;margin-top:8px;">
+                        {% if row.product.image %}{% trans "Заменить картинку" %}{% else %}{% trans "Загрузить картинку" %}{% endif %}
+                    </button>
+                </form>
+            </div>
+        {% empty %}
+            <p>{% trans "Товаров в этом импорте нет." %}</p>
+        {% endfor %}
+    </div>
+
+    {% if batch.all_images_uploaded %}
+        <form method="post" action="{% url 'bulk_import:batch_submit' batch.pk %}" class="card">
+            {% csrf_token %}
+            <p>{% trans "Все картинки загружены." %}</p>
+            <button type="submit" class="btn">{% trans "Отправить на подтверждение администратору" %}</button>
+        </form>
+    {% endif %}
+{% endblock %}
