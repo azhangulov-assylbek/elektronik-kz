@@ -74,6 +74,21 @@ def _run_upload_and_map(client, seller):
     return batch
 
 
+def test_csv_map_handles_cp1251_encoding(client, seller):
+    # Реальные прайс-листы поставщиков часто в Windows-1251, не UTF-8 —
+    # раньше падало с UnicodeDecodeError на этом шаге.
+    csv_text = 'Название,Артикул,Цена\r\nКириллица CP1251,CP1251-1,1000\r\n'
+    upload = SimpleUploadedFile('catalog.csv', csv_text.encode('cp1251'), content_type='text/csv')
+    client.force_login(seller)
+    client.post(reverse('bulk_import:batch_upload'), {'file': upload})
+    batch = ImportBatch.objects.get(seller=seller)
+
+    response = client.get(reverse('bulk_import:batch_map', args=[batch.pk]))
+
+    assert response.status_code == 200
+    assert 'Кириллица CP1251' in response.content.decode()
+
+
 def test_upload_creates_batch_with_uploaded_status(client, seller):
     client.force_login(seller)
     response = client.post(reverse('bulk_import:batch_upload'), {'file': _xlsx_upload(CATALOG_ROWS)})
@@ -247,6 +262,70 @@ def test_batch_isolated_between_sellers(client, seller):
     response = client.get(reverse('bulk_import:batch_map', args=[other_batch.pk]))
 
     assert response.status_code == 404
+
+
+def test_preview_paginates_at_20_rows_per_page(client, seller):
+    rows = [['Название', 'Артикул', 'Цена']] + [[f'Товар {i}', f'PAGE-{i}', '1000'] for i in range(1, 26)]
+    client.force_login(seller)
+    client.post(reverse('bulk_import:batch_upload'), {'file': _xlsx_upload(rows)})
+    batch = ImportBatch.objects.get(seller=seller)
+    client.post(
+        reverse('bulk_import:batch_map', args=[batch.pk]),
+        {'column_0': 'name', 'column_1': 'sku', 'column_2': 'price'},
+    )
+    assert batch.rows.count() == 25
+
+    page1 = client.get(reverse('bulk_import:batch_preview', args=[batch.pk]))
+    page2 = client.get(reverse('bulk_import:batch_preview', args=[batch.pk]), {'page': 2})
+
+    assert page1.context['page_obj'].paginator.num_pages == 2
+    assert len(page1.context['rows_with_values']) == 20
+    assert len(page2.context['rows_with_values']) == 5
+
+
+def test_images_step_paginates_at_20_rows_per_page(client, seller):
+    rows = [['Название', 'Артикул', 'Цена']] + [[f'Товар {i}', f'IMGPAGE-{i}', '1000'] for i in range(1, 26)]
+    client.force_login(seller)
+    client.post(reverse('bulk_import:batch_upload'), {'file': _xlsx_upload(rows)})
+    batch = ImportBatch.objects.get(seller=seller)
+    client.post(
+        reverse('bulk_import:batch_map', args=[batch.pk]),
+        {'column_0': 'name', 'column_1': 'sku', 'column_2': 'price'},
+    )
+    client.post(reverse('bulk_import:batch_preview', args=[batch.pk]))
+
+    page1 = client.get(reverse('bulk_import:batch_images', args=[batch.pk]))
+
+    assert page1.context['page_obj'].paginator.count == 25
+    assert len(page1.context['page_obj']) == 20
+
+
+def test_remap_after_wrong_mapping_rebuilds_rows(client, seller):
+    batch = _run_upload_and_map(client, seller)
+    # сопоставили правильно, но по сценарию продавец передумал/ошибся —
+    # возвращается на шаг сопоставления и меняет его
+    response = client.get(reverse('bulk_import:batch_map', args=[batch.pk]))
+    assert response.status_code == 200
+
+    remap_response = client.post(
+        reverse('bulk_import:batch_map', args=[batch.pk]),
+        # теперь sku и name перепутаны местами
+        {'column_0': 'sku', 'column_1': 'name', 'column_2': 'price', 'column_3': 'stock', 'column_4': 'category'},
+    )
+    assert remap_response.status_code == 302
+    assert batch.rows.count() == 2  # старые строки не задвоились
+
+    row = batch.rows.get(row_number=1)
+    assert row.raw_data['sku'] == 'Тестовый ноутбук'  # маппинг реально применился заново
+    assert row.raw_data['name'] == 'BULK-1'
+
+
+def test_batch_preview_has_link_back_to_mapping(client, seller):
+    batch = _run_upload_and_map(client, seller)
+
+    response = client.get(reverse('bulk_import:batch_preview', args=[batch.pk]))
+
+    assert reverse('bulk_import:batch_map', args=[batch.pk]) in response.content.decode()
 
 
 def test_import_row_str_and_batch_str():

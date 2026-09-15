@@ -2,9 +2,13 @@
 {% load i18n %}
 {% block title %}{% trans "Проверка данных" %} — elektronik.kz{% endblock %}
 {% block content %}
-    <p><a href="{% url 'bulk_import:batch_list' %}">← {% trans "К списку импортов" %}</a></p>
+    <p>
+        <a href="{% url 'bulk_import:batch_list' %}">← {% trans "К списку импортов" %}</a>
+        &nbsp;·&nbsp;
+        <a href="{% url 'bulk_import:batch_map' batch.pk %}">{% trans "Сопоставить колонки заново" %}</a>
+    </p>
     <h1>{% trans "Проверка данных перед загрузкой" %}</h1>
-    <p style="color:#666;">{% trans "Файл преобразован по вашему сопоставлению колонок. Проверьте данные — после подтверждения товары будут созданы (пока не видны в каталоге, до одобрения администратором)." %}</p>
+    <p style="color:#666;">{% trans "Файл преобразован по вашему сопоставлению колонок. Проверьте данные — после подтверждения товары будут созданы (пока не видны в каталоге, до одобрения администратором). Если колонки сопоставлены неверно — сопоставьте их заново по ссылке выше." %}</p>
 
     <div class="card" style="overflow-x:auto;">
         <table>
@@ -29,8 +33,22 @@
         </table>
     </div>
 
+    {% if page_obj.paginator.num_pages > 1 %}
+        <div class="card" style="display:flex;gap:12px;justify-content:center;">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}">← {% trans "Назад" %}</a>
+            {% endif %}
+            <span>{% blocktrans with num=page_obj.number total=page_obj.paginator.num_pages %}Страница {{ num }} из {{ total }}{% endblocktrans %}</span>
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">{% trans "Вперёд" %} →</a>
+            {% endif %}
+        </div>
+    {% endif %}
+
     <form method="post">
         {% csrf_token %}
-        <button type="submit" class="btn">{% trans "Подтвердить и создать товары" %}</button>
+        <button type="submit" class="btn">
+            {% blocktrans with total=page_obj.paginator.count %}Подтвердить и создать товары (всего строк: {{ total }}){% endblocktrans %}
+        </button>
     </form>
 {% endblock %}
