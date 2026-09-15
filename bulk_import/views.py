@@ -3,6 +3,7 @@ from functools import wraps
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.translation import gettext
@@ -15,6 +16,7 @@ from .models import MAPPABLE_FIELDS, ImportBatch
 from .services import build_rows_from_mapping, create_draft_products_for_batch, parse_file
 
 PREVIEW_ROWS = 5
+ROWS_PAGE_SIZE = 20
 
 
 def moderator_required(view_func):
@@ -73,7 +75,6 @@ def batch_map(request, pk):
 @seller_required
 def batch_preview(request, pk):
     batch = get_object_or_404(ImportBatch, pk=pk, seller=request.user)
-    rows = batch.rows.all()
     field_names = list(dict.fromkeys(batch.column_mapping.values()))
 
     if request.method == 'POST':
@@ -83,18 +84,20 @@ def batch_preview(request, pk):
         messages.success(request, gettext('Товары созданы черновиком. Теперь загрузите картинки к каждому.'))
         return redirect('bulk_import:batch_images', pk=batch.pk)
 
+    page_obj = Paginator(batch.rows.all(), ROWS_PAGE_SIZE).get_page(request.GET.get('page'))
     field_labels = [MAPPABLE_FIELDS.get(name, name) for name in field_names]
-    rows_with_values = [(row, [row.raw_data.get(name, '') for name in field_names]) for row in rows]
+    rows_with_values = [(row, [row.raw_data.get(name, '') for name in field_names]) for row in page_obj]
     return render(request, 'bulk_import/batch_preview.html', {
-        'batch': batch, 'field_labels': field_labels, 'rows_with_values': rows_with_values,
+        'batch': batch, 'field_labels': field_labels, 'rows_with_values': rows_with_values, 'page_obj': page_obj,
     })
 
 
 @seller_required
 def batch_images(request, pk):
     batch = get_object_or_404(ImportBatch, pk=pk, seller=request.user)
-    rows = batch.rows.filter(product__isnull=False).select_related('product')
-    return render(request, 'bulk_import/batch_images.html', {'batch': batch, 'rows': rows})
+    rows_qs = batch.rows.filter(product__isnull=False).select_related('product')
+    page_obj = Paginator(rows_qs, ROWS_PAGE_SIZE).get_page(request.GET.get('page'))
+    return render(request, 'bulk_import/batch_images.html', {'batch': batch, 'rows': page_obj, 'page_obj': page_obj})
 
 
 @seller_required

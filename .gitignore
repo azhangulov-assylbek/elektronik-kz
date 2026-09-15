@@ -17,3 +17,4 @@ media/
 import/**
 !import/**/
 !import/**/.gitkeep
+CLAUDE.md

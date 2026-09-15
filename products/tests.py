@@ -221,3 +221,16 @@ def test_xlsx_import_creates_product(client, admin_role_user):
 
     assert response.status_code == 302
     assert Product.objects.filter(sku='XLS-1', price=12345).exists()
+
+
+def test_csv_import_handles_cp1251_encoding(client, admin_role_user):
+    # Реальные прайс-листы поставщиков часто в Windows-1251, не UTF-8.
+    client.force_login(admin_role_user)
+    csv_text = 'name,sku,price\r\nКириллица CP1251,CP1251-1,1000\r\n'
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    upload = SimpleUploadedFile('catalog.csv', csv_text.encode('cp1251'), content_type='text/csv')
+
+    response = client.post(reverse('admin:products_product_import_catalog'), {'file': upload})
+
+    assert response.status_code == 302
+    assert Product.objects.filter(sku='CP1251-1', name='Кириллица CP1251').exists()

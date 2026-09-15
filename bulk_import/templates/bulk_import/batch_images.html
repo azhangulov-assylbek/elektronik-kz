@@ -29,6 +29,18 @@
         {% endfor %}
     </div>
 
+    {% if page_obj.paginator.num_pages > 1 %}
+        <div class="card" style="display:flex;gap:12px;justify-content:center;">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}">← {% trans "Назад" %}</a>
+            {% endif %}
+            <span>{% blocktrans with num=page_obj.number total=page_obj.paginator.num_pages %}Страница {{ num }} из {{ total }}{% endblocktrans %}</span>
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">{% trans "Вперёд" %} →</a>
+            {% endif %}
+        </div>
+    {% endif %}
+
     {% if batch.all_images_uploaded %}
         <form method="post" action="{% url 'bulk_import:batch_submit' batch.pk %}" class="card">
             {% csrf_token %}

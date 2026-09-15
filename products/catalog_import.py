@@ -9,6 +9,19 @@ from .models import Brand, Category, Product
 
 REQUIRED_COLUMNS = {'name', 'sku', 'price'}
 
+# Прайс-листы поставщиков часто выгружены из 1С/Excel в Windows-кодировке,
+# не UTF-8 — пробуем по очереди.
+CSV_ENCODINGS = ('utf-8-sig', 'utf-8', 'cp1251')
+
+
+def _decode_csv(raw_bytes: bytes) -> str:
+    for encoding in CSV_ENCODINGS:
+        try:
+            return raw_bytes.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw_bytes.decode('utf-8', errors='replace')
+
 
 @dataclass
 class ImportResult:
@@ -30,7 +43,7 @@ def _read_rows(uploaded_file):
                 continue
             yield dict(zip(header, row))
     else:
-        text = uploaded_file.read().decode('utf-8-sig')
+        text = _decode_csv(uploaded_file.read())
         reader = csv.DictReader(io.StringIO(text))
         for row in reader:
             yield {(key or '').strip().lower(): value for key, value in row.items()}

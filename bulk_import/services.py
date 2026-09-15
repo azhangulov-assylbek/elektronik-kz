@@ -8,6 +8,20 @@ from products.models import Brand, Category, Product
 
 from .models import REQUIRED_MAPPED_FIELDS, ImportBatch, ImportRow
 
+# Прайс-листы поставщиков часто выгружены из 1С/Excel в Windows-кодировке,
+# не UTF-8 — пробуем по очереди, отчёт об ошибке кодировки хуже, чем
+# формально нечитаемые несколько строк из-за неверно угаданной кодировки.
+CSV_ENCODINGS = ('utf-8-sig', 'utf-8', 'cp1251')
+
+
+def _decode_csv(raw_bytes: bytes) -> str:
+    for encoding in CSV_ENCODINGS:
+        try:
+            return raw_bytes.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw_bytes.decode('utf-8', errors='replace')
+
 
 def parse_file(uploaded_file):
     """Возвращает (headers, rows) — сырые заголовки и строки файла (CSV/.xlsx),
@@ -20,7 +34,7 @@ def parse_file(uploaded_file):
         headers = [str(cell).strip() if cell is not None else '' for cell in next(rows_iter, [])]
         rows = [list(row) for row in rows_iter if row and any(cell is not None for cell in row)]
     else:
-        text = uploaded_file.read().decode('utf-8-sig')
+        text = _decode_csv(uploaded_file.read())
         all_rows = list(csv.reader(io.StringIO(text)))
         headers = all_rows[0] if all_rows else []
         rows = [row for row in all_rows[1:] if any(cell.strip() for cell in row)]
