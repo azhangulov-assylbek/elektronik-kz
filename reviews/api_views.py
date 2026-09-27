@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import permissions
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import ListCreateAPIView
@@ -13,7 +14,7 @@ class ProductReviewListCreateView(ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_product(self):
-        return Product.objects.active().get(pk=self.kwargs['pk'])
+        return get_object_or_404(Product.objects.active(), pk=self.kwargs['pk'])
 
     def get_queryset(self):
         return Review.objects.filter(product_id=self.kwargs['pk']).select_related('user')

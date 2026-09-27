@@ -1,4 +1,8 @@
+from collections.abc import Mapping
+from typing import Any
+
 from rest_framework import permissions, status
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -9,6 +13,11 @@ from .serializers import CartSerializer
 from .utils import get_cart
 
 
+def _payload(request: Request) -> Mapping[str, Any]:
+    """Тело запроса как словарь; JSON-массив или другой не-объект считается пустым телом (а не 500)."""
+    return request.data if isinstance(request.data, Mapping) else {}
+
+
 class CartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -16,11 +25,12 @@ class CartView(APIView):
         return Response(CartSerializer(get_cart(request)).data)
 
     def post(self, request):
-        product = Product.objects.active().filter(pk=request.data.get('product')).first()
+        data = _payload(request)
+        product = Product.objects.active().filter(pk=data.get('product')).first()
         if not product:
             return Response({'detail': 'Товар не найден'}, status=status.HTTP_404_NOT_FOUND)
         try:
-            quantity = max(1, int(request.data.get('quantity', 1)))
+            quantity = max(1, int(data.get('quantity', 1)))
         except (TypeError, ValueError):
             quantity = 1
 
@@ -35,12 +45,13 @@ class CartView(APIView):
         return Response(CartSerializer(cart).data, status=status.HTTP_201_CREATED)
 
     def patch(self, request):
+        data = _payload(request)
         cart = get_cart(request)
-        item = cart.items.filter(pk=request.data.get('item_id')).first()
+        item = cart.items.filter(pk=data.get('item_id')).first()
         if not item:
             return Response({'detail': 'Позиция не найдена'}, status=status.HTTP_404_NOT_FOUND)
         try:
-            quantity = int(request.data.get('quantity', item.quantity))
+            quantity = int(data.get('quantity', item.quantity))
         except (TypeError, ValueError):
             return Response({'detail': 'Некорректное количество'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -53,7 +64,7 @@ class CartView(APIView):
 
     def delete(self, request):
         cart = get_cart(request)
-        item_id = request.data.get('item_id')
+        item_id = _payload(request).get('item_id')
         if item_id:
             cart.items.filter(pk=item_id).delete()
         else:

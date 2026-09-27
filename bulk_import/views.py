@@ -143,6 +143,7 @@ def moderation_list(request):
 def moderation_detail(request, pk):
     batch = get_object_or_404(ImportBatch, pk=pk, status=ImportBatch.Status.PENDING_APPROVAL)
     rows = batch.rows.filter(product__isnull=False).select_related('product')
+    form = RejectBatchForm()
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -165,7 +166,5 @@ def moderation_detail(request, pk):
                 batch.save(update_fields=['status', 'reviewed_by', 'reviewed_at', 'rejection_reason'])
                 messages.success(request, gettext('Импорт отклонён.'))
                 return redirect('bulk_import:moderation_list')
-    else:
-        form = RejectBatchForm()
 
     return render(request, 'bulk_import/moderation_detail.html', {'batch': batch, 'rows': rows, 'form': form})

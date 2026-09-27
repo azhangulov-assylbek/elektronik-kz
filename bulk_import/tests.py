@@ -218,6 +218,17 @@ def test_admin_rejects_batch_keeps_products_hidden(client, seller, admin_user):
     assert not Product.objects.filter(sku='BULK-1', is_active=True).exists()
 
 
+def test_moderation_unknown_action_does_not_crash(client, seller, admin_user):
+    batch = _submit_full_batch(client, seller)
+
+    client.force_login(admin_user)
+    response = client.post(reverse('bulk_import:moderation_detail', args=[batch.pk]), {'action': 'bogus'})
+
+    assert response.status_code == 200
+    batch.refresh_from_db()
+    assert batch.status == ImportBatch.Status.PENDING_APPROVAL
+
+
 def test_customer_cannot_access_import_upload(client, customer):
     client.force_login(customer)
 

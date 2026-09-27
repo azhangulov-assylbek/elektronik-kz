@@ -4,6 +4,7 @@ from django.views.generic import DetailView, ListView
 from reviews.forms import ReviewForm
 
 from .models import Category, Product
+from .utils import parse_price
 
 
 class ProductListView(ListView):
@@ -27,13 +28,13 @@ class ProductListView(ListView):
         if categories:
             qs = qs.filter(category__slug__in=categories)
 
-        min_price = self.request.GET.get('min_price')
-        max_price = self.request.GET.get('max_price')
+        min_price = parse_price(self.request.GET.get('min_price'))
+        max_price = parse_price(self.request.GET.get('max_price'))
 
-        if min_price:
+        if min_price is not None:
             qs = qs.filter(price__gte=min_price)
 
-        if max_price:
+        if max_price is not None:
             qs = qs.filter(price__lte=max_price)
 
         sort_map = {

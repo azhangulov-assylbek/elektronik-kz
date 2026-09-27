@@ -3,6 +3,7 @@ from rest_framework import permissions, viewsets
 
 from .models import Product
 from .serializers import ProductSerializer
+from .utils import parse_price
 
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
@@ -20,12 +21,12 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         if query:
             qs = qs.filter(Q(name__icontains=query) | Q(description__icontains=query))
 
-        price_min = self.request.query_params.get('price_min')
-        if price_min:
+        price_min = parse_price(self.request.query_params.get('price_min'))
+        if price_min is not None:
             qs = qs.filter(price__gte=price_min)
 
-        price_max = self.request.query_params.get('price_max')
-        if price_max:
+        price_max = parse_price(self.request.query_params.get('price_max'))
+        if price_max is not None:
             qs = qs.filter(price__lte=price_max)
 
         ordering = self.request.query_params.get('ordering')

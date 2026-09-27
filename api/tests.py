@@ -140,6 +140,28 @@ def test_review_requires_purchase_via_api(client, product):
     assert response.status_code == 403
 
 
+def test_review_for_missing_product_returns_404(client):
+    user = User.objects.create_user(email='api@example.com', password='StrongPass123')
+    _auth_client(client, user)
+
+    response = client.post(
+        reverse('api-product-reviews', args=[999999]),
+        {'rating': 5, 'comment': 'Отлично'},
+        content_type='application/json',
+    )
+
+    assert response.status_code == 404
+
+
+def test_cart_json_array_body_is_not_server_error(client, product):
+    user = User.objects.create_user(email='api@example.com', password='StrongPass123')
+    _auth_client(client, user)
+
+    response = client.post(reverse('api-cart'), [product.id], content_type='application/json')
+
+    assert response.status_code == 404
+
+
 def test_cancel_order_via_api_restocks(client, product):
     user = User.objects.create_user(email='api@example.com', password='StrongPass123')
     _auth_client(client, user)
