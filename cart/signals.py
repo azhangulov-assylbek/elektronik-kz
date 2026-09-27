@@ -1,11 +1,17 @@
+from typing import Any
+
 from django.contrib.auth.signals import user_logged_in
 from django.dispatch import receiver
+from django.http import HttpRequest
+
+from users.models import User
 
 from .models import Cart
 
 
 @receiver(user_logged_in)
-def merge_session_cart(sender, request, user, **kwargs):
+def merge_session_cart(sender: type[User], request: HttpRequest, user: User, **kwargs: Any) -> None:
+    """При входе переносит товары из гостевой корзины в корзину пользователя."""
     # request.session.session_key меняется в auth_login() ДО отправки этого
     # сигнала (Django пересоздаёт ключ сессии при входе), поэтому берём
     # значение, сохранённое до логина — см. cart.middleware.StashSessionKeyMiddleware.

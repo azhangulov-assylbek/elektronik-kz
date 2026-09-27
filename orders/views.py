@@ -1,15 +1,15 @@
+"""Веб-вьюхи заказов: оформление (checkout), история и детали заказа."""
 from datetime import date
-from typing import cast
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 from django.utils.translation import gettext
 
 from cart.utils import get_cart
-from users.models import User
+from users.types import AuthenticatedHttpRequest
 
 from .emails import send_order_notifications
 from .forms import CheckoutForm
@@ -18,7 +18,11 @@ from .services import InsufficientStockError, create_order_from_cart
 
 
 @login_required
-def checkout(request):
+def checkout(request: AuthenticatedHttpRequest) -> HttpResponse:
+    """Оформление заказа из корзины; форма предзаполняется адресом по умолчанию.
+
+    При нехватке остатка заказ не создаётся, пользователь возвращается в корзину с сообщением.
+    """
     cart = get_cart(request)
     if not cart.items.exists():
         messages.warning(request, gettext('Ваша корзина пуста'))
@@ -61,7 +65,7 @@ def checkout(request):
 
 
 def _parse_date_param(value: str) -> date | None:
-    """Разобрать дату YYYY-MM-DD из GET-параметра; невалидная дата молча игнорируется."""
+    """Разобрать дату YYYY-MM-DD из GET-параметра; невалидная дата молча игнорируется, как и в фильтре каталога."""
     try:
         return parse_date(value)
     except ValueError:
@@ -69,10 +73,9 @@ def _parse_date_param(value: str) -> date | None:
 
 
 @login_required
-def order_list(request: HttpRequest) -> HttpResponse:
+def order_list(request: AuthenticatedHttpRequest) -> HttpResponse:
     """История заказов пользователя с фильтром по статусу и периоду (?status=&date_from=&date_to=)."""
-    user = cast(User, request.user)  # гарантировано @login_required
-    orders = Order.objects.filter(user=user).prefetch_related('items')
+    orders = Order.objects.filter(user=request.user).prefetch_related('items')
 
     status = request.GET.get('status', '')
     if status in Order.Status.values:
@@ -99,6 +102,7 @@ def order_list(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-def order_detail(request, pk):
+def order_detail(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
+    """Детали своего заказа; чужой заказ — 404."""
     order = get_object_or_404(Order.objects.prefetch_related('items'), pk=pk, user=request.user)
     return render(request, 'orders/order_detail.html', {'order': order})

@@ -1,3 +1,4 @@
+"""REST API корзины: /api/cart/ (GET, POST, PATCH, DELETE)."""
 from collections.abc import Mapping
 from typing import Any
 
@@ -19,14 +20,19 @@ def _payload(request: Request) -> Mapping[str, Any]:
 
 
 class CartView(APIView):
+    """Корзина текущего пользователя. Количество ограничивается остатком на складе."""
+
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request: Request) -> Response:
+        """Содержимое корзины."""
         return Response(CartSerializer(get_cart(request)).data)
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
+        """Добавить товар: ``{"product": <id>, "quantity": <n>}``."""
         data = _payload(request)
-        product = Product.objects.active().filter(pk=data.get('product')).first()
+        product_id = data.get('product')
+        product = Product.objects.active().filter(pk=product_id).first() if product_id is not None else None
         if not product:
             return Response({'detail': 'Товар не найден'}, status=status.HTTP_404_NOT_FOUND)
         try:
@@ -44,10 +50,12 @@ class CartView(APIView):
             item.save(update_fields=['quantity'])
         return Response(CartSerializer(cart).data, status=status.HTTP_201_CREATED)
 
-    def patch(self, request):
+    def patch(self, request: Request) -> Response:
+        """Изменить количество: ``{"item_id": <id>, "quantity": <n>}``; 0 — удалить позицию."""
         data = _payload(request)
         cart = get_cart(request)
-        item = cart.items.filter(pk=data.get('item_id')).first()
+        item_id = data.get('item_id')
+        item = cart.items.filter(pk=item_id).first() if item_id is not None else None
         if not item:
             return Response({'detail': 'Позиция не найдена'}, status=status.HTTP_404_NOT_FOUND)
         try:
@@ -62,7 +70,8 @@ class CartView(APIView):
             item.save(update_fields=['quantity'])
         return Response(CartSerializer(cart).data)
 
-    def delete(self, request):
+    def delete(self, request: Request) -> Response:
+        """Удалить позицию (``{"item_id": <id>}``) или очистить всю корзину, если item_id не передан."""
         cart = get_cart(request)
         item_id = _payload(request).get('item_id')
         if item_id:

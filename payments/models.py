@@ -3,6 +3,8 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Payment(models.Model):
+    """Оплата заказа (мок): способ и статус; картой — сразу «оплачен»."""
+
     class Method(models.TextChoices):
         CARD = 'card', _('Картой онлайн')
         CASH = 'cash', _('Наличными при получении')
@@ -24,5 +26,5 @@ class Payment(models.Model):
         verbose_name_plural = _('оплаты')
         ordering = ['-created_at']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Оплата заказа #{self.order_id} — {self.get_method_display()}'

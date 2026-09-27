@@ -1,4 +1,5 @@
 import re
+from typing import Any
 
 from django import forms
 from django.contrib.auth import get_user_model
@@ -10,21 +11,23 @@ from .models import Address
 User = get_user_model()
 
 
-def _looks_like_email(value):
+def _looks_like_email(value: str) -> bool:
     return '@' in value
 
 
 class LoginForm(AuthenticationForm):
     username = forms.CharField(label='Email или телефон')
 
-    def clean_username(self):
+    def clean_username(self) -> str:
+        """Телефон в любом формате (8 700..., 7700...) приводится к +7XXXXXXXXXX, как хранится в базе."""
         value = self.cleaned_data['username'].strip()
         if not _looks_like_email(value):
             value = normalize_phone(value) or value
         return value
 
 
-def normalize_phone(raw):
+def normalize_phone(raw: str) -> str | None:
+    """Привести казахстанский номер к виду +7XXXXXXXXXX; None, если это не номер."""
     digits = re.sub(r'\D', '', raw)
     if len(digits) == 11 and digits[0] in ('7', '8'):
         return '+7' + digits[1:]
@@ -34,6 +37,8 @@ def normalize_phone(raw):
 
 
 class RegistrationForm(forms.Form):
+    """Регистрация по одному полю «email или телефон» + пароль."""
+
     identifier = forms.CharField(
         label='Email или телефон',
         help_text='Например, ivan@example.com или +77001234567',
@@ -42,8 +47,9 @@ class RegistrationForm(forms.Form):
     password1 = forms.CharField(label='Пароль', widget=forms.PasswordInput, min_length=8)
     password2 = forms.CharField(label='Повторите пароль', widget=forms.PasswordInput)
 
-    def clean(self):
-        cleaned = super().clean()
+    def clean(self) -> dict[str, Any]:
+        """Разложить identifier в email/phone и проверить, что такой пользователь ещё не зарегистрирован."""
+        cleaned = super().clean() or {}
         identifier = cleaned.get('identifier', '').strip()
         if identifier:
             if _looks_like_email(identifier):
@@ -66,7 +72,7 @@ class RegistrationForm(forms.Form):
             self.add_error('password2', 'Пароли не совпадают')
         return cleaned
 
-    def save(self):
+    def save(self) -> Any:
         return User.objects.create_user(
             email=self.cleaned_data.get('email'),
             phone=self.cleaned_data.get('phone'),
@@ -80,20 +86,20 @@ class ProfileForm(forms.ModelForm):
         model = User
         fields = ['first_name', 'last_name', 'email', 'phone']
 
-    def clean_email(self):
+    def clean_email(self) -> str | None:
         email = self.cleaned_data.get('email')
         if email and User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk).exists():
             raise ValidationError('Этот email уже используется')
         return email
 
-    def clean_phone(self):
+    def clean_phone(self) -> str | None:
         phone = self.cleaned_data.get('phone')
         if phone and User.objects.filter(phone=phone).exclude(pk=self.instance.pk).exists():
             raise ValidationError('Этот телефон уже используется')
         return phone
 
-    def clean(self):
-        cleaned = super().clean()
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean() or {}
         if not cleaned.get('email') and not cleaned.get('phone'):
             raise ValidationError('Укажите хотя бы email или телефон')
         return cleaned

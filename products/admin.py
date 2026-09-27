@@ -1,8 +1,11 @@
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import DecimalField, ExpressionWrapper, F, QuerySet, Sum
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
-from django.urls import path
+from django.urls import URLPattern, path
+
+from users.types import AuthenticatedHttpRequest
 
 from .catalog_import import import_catalog
 from .forms import CatalogImportForm
@@ -26,13 +29,15 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
+    """Товары в админке: продажи и выручка по каждому товару + импорт каталога файлом."""
+
     list_display = ('name', 'sku', 'category', 'brand', 'price', 'stock', 'is_active', 'total_sold', 'revenue')
     list_filter = ('category', 'brand', 'is_active')
     list_editable = ('price', 'stock', 'is_active')
     search_fields = ('name', 'sku')
     prepopulated_fields = {'slug': ('name',)}
 
-    def get_queryset(self, request):
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Product]:
         return super().get_queryset(request).annotate(
             total_sold_annotated=Sum('orderitem__quantity'),
             revenue_annotated=Sum(
@@ -41,28 +46,30 @@ class ProductAdmin(admin.ModelAdmin):
         )
 
     @admin.display(description='Продано, шт.', ordering='total_sold_annotated')
-    def total_sold(self, obj):
-        return obj.total_sold_annotated or 0
+    def total_sold(self, obj: Product) -> int:
+        # *_annotated добавляются в get_queryset, у самой модели таких полей нет.
+        return getattr(obj, 'total_sold_annotated', None) or 0
 
     @admin.display(description='Выручка', ordering='revenue_annotated')
-    def revenue(self, obj):
-        return f'{obj.revenue_annotated or 0} ₸'
+    def revenue(self, obj: Product) -> str:
+        return f'{getattr(obj, "revenue_annotated", None) or 0} ₸'
 
-    def get_urls(self):
+    def get_urls(self) -> list[URLPattern]:
         custom_urls = [
             path('import-catalog/', self.admin_site.admin_view(self.import_catalog_view),
                  name='products_product_import_catalog'),
         ]
         return custom_urls + super().get_urls()
 
-    def import_catalog_view(self, request):
+    def import_catalog_view(self, request: AuthenticatedHttpRequest) -> HttpResponse:
+        """Импорт CSV/.xlsx (upsert по sku) — только для администратора (User.can_bulk_import_catalog)."""
         if not request.user.can_bulk_import_catalog:
             raise PermissionDenied
 
         if request.method == 'POST':
             form = CatalogImportForm(request.POST, request.FILES)
             if form.is_valid():
-                result = import_catalog(request.FILES['file'])
+                result = import_catalog(form.cleaned_data['file'])
                 for error in result.errors[:20]:
                     messages.error(request, error)
                 if result.created or result.updated:

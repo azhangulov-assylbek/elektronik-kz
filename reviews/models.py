@@ -5,6 +5,8 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Review(models.Model):
+    """Отзыв с оценкой 1–5; один отзыв от пользователя на товар."""
+
     product = models.ForeignKey(
         'products.Product', verbose_name=_('товар'), related_name='reviews', on_delete=models.CASCADE,
     )
@@ -22,5 +24,5 @@ class Review(models.Model):
         ordering = ['-created_at']
         unique_together = [('product', 'user')]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'{self.product} — {self.rating}★ от {self.user}'

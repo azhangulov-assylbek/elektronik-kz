@@ -1,4 +1,5 @@
-from django.db.models import Q
+"""REST API каталога: /api/products/ (только чтение, доступно без авторизации)."""
+from django.db.models import Q, QuerySet
 from rest_framework import permissions, viewsets
 
 from .models import Product
@@ -7,10 +8,13 @@ from .utils import parse_price
 
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
+    """Активные товары. Фильтры: ?category=<slug>, ?q=, ?price_min=, ?price_max=,
+    ?ordering=price|-price|created_at|-created_at."""
+
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[Product]:
         qs = Product.objects.active().select_related('category', 'brand')
 
         category = self.request.query_params.get('category')

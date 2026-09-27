@@ -1,8 +1,12 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models
 
 
 class Cart(models.Model):
+    """Корзина: у авторизованного пользователя — по user, у гостя — по session_key."""
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, verbose_name='пользователь',
         null=True, blank=True, related_name='cart', on_delete=models.CASCADE,
@@ -21,18 +25,19 @@ class Cart(models.Model):
             ),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Корзина {self.user or self.session_key}'
 
     @property
-    def total_price(self):
-        return sum((item.subtotal for item in self.items.all()), start=0)
+    def total_price(self) -> Decimal:
+        return sum((item.subtotal for item in self.items.all()), start=Decimal(0))
 
     @property
-    def total_items(self):
+    def total_items(self) -> int:
         return sum(item.quantity for item in self.items.all())
 
-    def merge_from(self, other_cart):
+    def merge_from(self, other_cart: 'Cart') -> None:
+        """Перенести позиции другой корзины в эту (количества суммируются), другую — удалить."""
         for item in other_cart.items.select_related('product'):
             own_item, created = self.items.get_or_create(
                 product=item.product,
@@ -55,9 +60,9 @@ class CartItem(models.Model):
         verbose_name_plural = 'товары в корзине'
         unique_together = [('cart', 'product')]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'{self.product} x{self.quantity}'
 
     @property
-    def subtotal(self):
+    def subtotal(self) -> Decimal:
         return self.product.price * self.quantity

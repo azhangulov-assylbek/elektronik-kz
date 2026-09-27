@@ -1,4 +1,7 @@
-from django.db.models import Avg, Count, Q
+"""Веб-вьюхи каталога: список товаров с фильтрами и страница товара."""
+from typing import Any
+
+from django.db.models import Avg, Count, Q, QuerySet
 from django.views.generic import DetailView, ListView
 
 from reviews.forms import ReviewForm
@@ -8,12 +11,15 @@ from .utils import parse_price
 
 
 class ProductListView(ListView):
+    """Каталог (главная): поиск ?q=, категории ?category= (можно несколько), цена ?min_price=/?max_price=,
+    сортировка ?sort=new|price_asc|price_desc|popular|rating, пагинация по 9."""
+
     model = Product
     template_name = 'products/home.html'
     context_object_name = 'products'
     paginate_by = 9
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[Product]:
         qs = (
             Product.objects.active()
             .select_related('category', 'brand')
@@ -47,7 +53,7 @@ class ProductListView(ListView):
         sort = self.request.GET.get('sort', 'new')
         return qs.order_by(sort_map.get(sort, '-created_at'))
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
         ctx['categories'] = Category.objects.all()
         ctx['query'] = self.request.GET.get('q', '')
@@ -63,18 +69,20 @@ class ProductListView(ListView):
 
 
 class ProductDetailView(DetailView):
+    """Страница товара: детали, средний рейтинг, отзывы и форма отзыва (если товар куплен и отзыва ещё нет)."""
+
     model = Product
     template_name = 'products/product_detail.html'
     context_object_name = 'product'
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[Product]:
         return (
             Product.objects.active()
             .select_related('category', 'brand')
             .annotate(avg_rating=Avg('reviews__rating'))
         )
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
         product = self.object
         ctx['reviews'] = product.reviews.select_related('user')

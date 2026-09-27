@@ -1,16 +1,28 @@
-from django.contrib.auth import get_user_model
+from typing import Any
+
 from django.contrib.auth.backends import ModelBackend
 from django.db.models import Q
+from django.http import HttpRequest
+
+from .models import User
 
 
 class EmailOrPhoneBackend(ModelBackend):
-    def authenticate(self, request, username=None, password=None, **kwargs):
+    """Аутентификация по email (без учёта регистра) или по телефону в формате +7XXXXXXXXXX."""
+
+    def authenticate(
+        self,
+        request: HttpRequest | None,
+        username: str | None = None,
+        password: str | None = None,
+        **kwargs: Any,
+    ) -> User | None:
         if not username or not password:
             return None
-        User = get_user_model()
         try:
             user = User.objects.get(Q(email__iexact=username) | Q(phone=username))
         except User.DoesNotExist:
+            # Хешируем пароль впустую, чтобы время ответа не выдавало, существует ли пользователь.
             User().set_password(password)
             return None
         except User.MultipleObjectsReturned:
