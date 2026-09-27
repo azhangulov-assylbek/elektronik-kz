@@ -145,6 +145,22 @@ from users.models import User
 User.objects.create_user(email='seller@elektronik.kz', password='...', role=User.Role.SELLER)
 ```
 
+## Ветки
+
+| Ветка | Назначение |
+|---|---|
+| `production` | стабильная версия — то, что разворачивается (Docker, PostgreSQL) |
+| `development` | текущая разработка; новые задачи — в ветках `feature/...` от неё |
+
+Готовые изменения попадают в `development` из `feature/...`, а в
+`production` — слиянием `development` через Pull Request.
+
+Код в обеих ветках одинаковый: база данных выбирается **модулем настроек, а
+не веткой** (см. «Настройки: development и prod» выше). Локально проект
+запускается с `config.settings.development` (SQLite), в Docker — с
+`config.settings.prod` (PostgreSQL). Поэтому при слиянии `development` →
+`production` настройки БД не конфликтуют и SQLite в прод не попадает.
+
 ## Тесты и линтеры
 
 ```bash
@@ -226,7 +242,7 @@ with open('locale/kk/LC_MESSAGES/django.mo', 'wb') as f:
 - [x] Модерируемый импорт каталога продавцом (`bulk_import`)
 - [x] README (этот файл)
 - [x] Коммиты осмысленные, история сохранена
-- [ ] Ветки `feature/...` / `develop` — пока работа идёт в `master`
+- [x] Ветки: `production` (стабильная) и `development` (разработка), задачи — в `feature/...`
 - [ ] Ссылка на деплой / скринкаст — не делали, магазин пока не задеплоен
 - [ ] GraphQL — не делали (опционально по ТЗ)
 
