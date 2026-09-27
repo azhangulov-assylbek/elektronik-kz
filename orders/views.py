@@ -1,9 +1,15 @@
+from datetime import date
+from typing import cast
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date
 from django.utils.translation import gettext
 
 from cart.utils import get_cart
+from users.models import User
 
 from .emails import send_order_notifications
 from .forms import CheckoutForm
@@ -54,10 +60,42 @@ def checkout(request):
     return render(request, 'orders/checkout.html', {'form': form, 'cart': cart})
 
 
+def _parse_date_param(value: str) -> date | None:
+    """Разобрать дату YYYY-MM-DD из GET-параметра; невалидная дата молча игнорируется."""
+    try:
+        return parse_date(value)
+    except ValueError:
+        return None
+
+
 @login_required
-def order_list(request):
-    orders = request.user.orders.prefetch_related('items')
-    return render(request, 'orders/order_list.html', {'orders': orders})
+def order_list(request: HttpRequest) -> HttpResponse:
+    """История заказов пользователя с фильтром по статусу и периоду (?status=&date_from=&date_to=)."""
+    user = cast(User, request.user)  # гарантировано @login_required
+    orders = Order.objects.filter(user=user).prefetch_related('items')
+
+    status = request.GET.get('status', '')
+    if status in Order.Status.values:
+        orders = orders.filter(status=status)
+    else:
+        status = ''
+
+    date_from = _parse_date_param(request.GET.get('date_from', ''))
+    date_to = _parse_date_param(request.GET.get('date_to', ''))
+    if date_from:
+        orders = orders.filter(created_at__date__gte=date_from)
+    if date_to:
+        orders = orders.filter(created_at__date__lte=date_to)
+
+    ctx = {
+        'orders': orders,
+        'statuses': Order.Status.choices,
+        'current_status': status,
+        'date_from': date_from.isoformat() if date_from else '',
+        'date_to': date_to.isoformat() if date_to else '',
+        'is_filtered': bool(status or date_from or date_to),
+    }
+    return render(request, 'orders/order_list.html', ctx)
 
 
 @login_required

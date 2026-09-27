@@ -3,6 +3,29 @@
 {% block title %}{% trans "Мои заказы" %} — elektronik.kz{% endblock %}
 {% block content %}
     <h1>{% trans "Мои заказы" %}</h1>
+    <form method="get" class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+        <div style="min-width:160px;">
+            <label>{% trans "Статус" %}</label>
+            <select name="status">
+                <option value="">{% trans "Все" %}</option>
+                {% for value, label in statuses %}
+                    <option value="{{ value }}" {% if value == current_status %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="min-width:150px;">
+            <label>{% trans "Дата с" %}</label>
+            <input type="date" name="date_from" value="{{ date_from }}">
+        </div>
+        <div style="min-width:150px;">
+            <label>{% trans "Дата по" %}</label>
+            <input type="date" name="date_to" value="{{ date_to }}">
+        </div>
+        <div>
+            <button type="submit" class="btn">{% trans "Применить" %}</button>
+            {% if is_filtered %}<a href="{% url 'orders:list' %}">{% trans "Сбросить" %}</a>{% endif %}
+        </div>
+    </form>
     {% if orders %}
         <div class="card">
             <table>
@@ -25,6 +48,8 @@
                 </tbody>
             </table>
         </div>
+    {% elif is_filtered %}
+        <p>{% trans "Ничего не найдено." %}</p>
     {% else %}
         <p>{% trans "У вас пока нет заказов." %}</p>
     {% endif %}
