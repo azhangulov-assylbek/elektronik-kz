@@ -27,6 +27,14 @@ from .services import build_rows_from_mapping, create_draft_products_for_batch, 
 PREVIEW_ROWS = 5
 ROWS_PAGE_SIZE = 20
 
+# Шаг продавца (URL name) для каждого статуса. У отправленных на модерацию,
+# одобренных и отклонённых импортов шагов больше нет — их менять нельзя.
+STEP_FOR_STATUS = {
+    ImportBatch.Status.UPLOADED: 'bulk_import:batch_map',
+    ImportBatch.Status.MAPPED: 'bulk_import:batch_preview',
+    ImportBatch.Status.IMAGES_PENDING: 'bulk_import:batch_images',
+}
+
 
 def moderator_required(view_func: Callable[..., HttpResponse]) -> Callable[..., HttpResponse]:
     """Доступ только администраторам (User.can_bulk_import_catalog)."""
@@ -37,6 +45,20 @@ def moderator_required(view_func: Callable[..., HttpResponse]) -> Callable[..., 
             raise PermissionDenied
         return view_func(request, *args, **kwargs)
     return wrapper
+
+
+def _step_unavailable(request: AuthenticatedHttpRequest, batch: ImportBatch) -> HttpResponse:
+    """Шаг не соответствует статусу импорта — предупредить и отправить на актуальный шаг (или к списку)."""
+    messages.warning(
+        request,
+        gettext('Этот шаг для импорта #%(id)s сейчас недоступен (статус: %(status)s).') % {
+            'id': batch.pk, 'status': batch.get_status_display(),
+        },
+    )
+    step = STEP_FOR_STATUS.get(ImportBatch.Status(batch.status))
+    if step:
+        return redirect(step, pk=batch.pk)
+    return redirect('bulk_import:batch_list')
 
 
 @seller_required
@@ -64,6 +86,9 @@ def batch_upload(request: AuthenticatedHttpRequest) -> HttpResponse:
 def batch_map(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     """Шаг 2: превью первых строк и сопоставление колонок файла полям товара."""
     batch = get_object_or_404(ImportBatch, pk=pk, seller=request.user)
+    # Пересопоставить можно, пока товары ещё не созданы.
+    if batch.status not in (ImportBatch.Status.UPLOADED, ImportBatch.Status.MAPPED):
+        return _step_unavailable(request, batch)
     headers, rows = parse_file(batch.file)
     preview_rows = rows[:PREVIEW_ROWS]
 
@@ -88,6 +113,8 @@ def batch_map(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
 def batch_preview(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     """Шаг 3: данные по маппингу; POST создаёт черновые товары (is_active=False)."""
     batch = get_object_or_404(ImportBatch, pk=pk, seller=request.user)
+    if batch.status != ImportBatch.Status.MAPPED:
+        return _step_unavailable(request, batch)
     field_names = list(dict.fromkeys(batch.column_mapping.values()))
 
     if request.method == 'POST':
@@ -109,6 +136,8 @@ def batch_preview(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
 def batch_images(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     """Шаг 4: список созданных товаров для загрузки картинок."""
     batch = get_object_or_404(ImportBatch, pk=pk, seller=request.user)
+    if batch.status != ImportBatch.Status.IMAGES_PENDING:
+        return _step_unavailable(request, batch)
     rows_qs = batch.rows.filter(product__isnull=False).select_related('product')
     page_obj = Paginator(rows_qs, ROWS_PAGE_SIZE).get_page(request.GET.get('page'))
     return render(request, 'bulk_import/batch_images.html', {'batch': batch, 'rows': page_obj, 'page_obj': page_obj})
@@ -118,6 +147,8 @@ def batch_images(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
 def batch_image_upload(request: AuthenticatedHttpRequest, pk: int, row_id: int) -> HttpResponse:
     """Загрузить картинку к одному товару импорта."""
     batch = get_object_or_404(ImportBatch, pk=pk, seller=request.user)
+    if batch.status != ImportBatch.Status.IMAGES_PENDING:
+        return _step_unavailable(request, batch)
     row = get_object_or_404(batch.rows.select_related('product'), pk=row_id, product__isnull=False)
 
     if request.method == 'POST':
@@ -138,6 +169,8 @@ def batch_image_upload(request: AuthenticatedHttpRequest, pk: int, row_id: int) 
 def batch_submit(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     """Шаг 5: отправить на модерацию — только когда у всех товаров есть картинка."""
     batch = get_object_or_404(ImportBatch, pk=pk, seller=request.user)
+    if batch.status != ImportBatch.Status.IMAGES_PENDING:
+        return _step_unavailable(request, batch)
 
     if request.method == 'POST':
         if not batch.all_images_uploaded:

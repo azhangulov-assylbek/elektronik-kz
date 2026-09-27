@@ -344,3 +344,80 @@ def test_import_row_str_and_batch_str():
     row = ImportRow(batch_id=1, row_number=3)
     assert 'Импорт #1' in str(batch)
     assert 'Строка 3' in str(row)
+
+
+MAPPING_POST = {
+    'column_0': 'name', 'column_1': 'sku', 'column_2': 'price', 'column_3': 'stock', 'column_4': 'category',
+}
+
+
+def _step_requests(batch):
+    """(url, данные POST) для каждого шага продавца."""
+    row = batch.rows.filter(product__isnull=False).first()
+    return [
+        (reverse('bulk_import:batch_map', args=[batch.pk]), MAPPING_POST),
+        (reverse('bulk_import:batch_preview', args=[batch.pk]), {}),
+        (reverse('bulk_import:batch_image_upload', args=[batch.pk, row.pk]), {'image': _png_upload()}),
+        (reverse('bulk_import:batch_submit', args=[batch.pk]), {}),
+    ]
+
+
+@pytest.mark.parametrize('final_status', [
+    ImportBatch.Status.PENDING_APPROVAL,
+    ImportBatch.Status.APPROVED,
+    ImportBatch.Status.REJECTED,
+])
+def test_seller_cannot_change_batch_after_submit(client, seller, admin_user, final_status):
+    batch = _submit_full_batch(client, seller)
+    if final_status != ImportBatch.Status.PENDING_APPROVAL:
+        client.force_login(admin_user)
+        action = 'approve' if final_status == ImportBatch.Status.APPROVED else 'reject'
+        client.post(reverse('bulk_import:moderation_detail', args=[batch.pk]), {'action': action})
+        client.force_login(seller)
+    rows_before = list(batch.rows.values_list('pk', 'product_id'))
+    requests = _step_requests(batch)
+    Product.objects.filter(import_rows__batch=batch).update(image='')  # чтобы заметить повторную загрузку
+
+    for url, data in requests:
+        response = client.post(url, data)
+        assert response.status_code == 302
+        assert response.url == reverse('bulk_import:batch_list')
+
+    batch.refresh_from_db()
+    assert batch.status == final_status
+    assert list(batch.rows.values_list('pk', 'product_id')) == rows_before
+    assert not Product.objects.filter(import_rows__batch=batch).exclude(image='').exists()
+
+
+def test_remap_blocked_after_drafts_created(client, seller):
+    batch = _run_upload_and_map(client, seller)
+    client.post(reverse('bulk_import:batch_preview', args=[batch.pk]))
+    rows_before = list(batch.rows.values_list('pk', 'product_id'))
+
+    response = client.post(reverse('bulk_import:batch_map', args=[batch.pk]), MAPPING_POST)
+
+    assert response.status_code == 302
+    assert response.url == reverse('bulk_import:batch_images', args=[batch.pk])
+    batch.refresh_from_db()
+    assert batch.status == ImportBatch.Status.IMAGES_PENDING
+    assert list(batch.rows.values_list('pk', 'product_id')) == rows_before
+
+
+def test_remap_allowed_before_drafts_created(client, seller):
+    batch = _run_upload_and_map(client, seller)
+
+    response = client.post(reverse('bulk_import:batch_map', args=[batch.pk]), MAPPING_POST)
+
+    assert response.status_code == 302
+    assert response.url == reverse('bulk_import:batch_preview', args=[batch.pk])
+
+
+def test_early_step_redirects_to_current_step(client, seller):
+    client.force_login(seller)
+    client.post(reverse('bulk_import:batch_upload'), {'file': _xlsx_upload(CATALOG_ROWS)})
+    batch = ImportBatch.objects.get(seller=seller)
+
+    response = client.get(reverse('bulk_import:batch_images', args=[batch.pk]))
+
+    assert response.status_code == 302
+    assert response.url == reverse('bulk_import:batch_map', args=[batch.pk])
