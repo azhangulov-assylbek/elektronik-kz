@@ -1,5 +1,8 @@
+from datetime import datetime
+
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
 from cart.models import CartItem
 from orders.models import Order
@@ -123,3 +126,61 @@ def test_checkout_view_creates_order(client, user, product):
     assert response.status_code == 302
     assert order.items.count() == 1
     assert cart.items.count() == 0
+
+
+def _order(user, status, created_at):
+    order = Order.objects.create(
+        user=user, full_name='Тест', phone='+77001234567', city='Алматы',
+        street='Абая', house='1', status=status,
+    )
+    # created_at — auto_now_add, поэтому задаём дату через update().
+    Order.objects.filter(pk=order.pk).update(created_at=created_at)
+    return order
+
+
+@pytest.fixture
+def orders_history(user):
+    tz = timezone.get_current_timezone()
+    return {
+        'old_paid': _order(user, Order.Status.PAID, datetime(2026, 1, 10, 12, tzinfo=tz)),
+        'new_cancelled': _order(user, Order.Status.CANCELLED, datetime(2026, 3, 5, 12, tzinfo=tz)),
+        'new_paid': _order(user, Order.Status.PAID, datetime(2026, 3, 20, 12, tzinfo=tz)),
+    }
+
+
+def _listed_ids(client, **params):
+    response = client.get(reverse('orders:list'), params)
+    assert response.status_code == 200
+    return {order.pk for order in response.context['orders']}
+
+
+def test_order_list_without_filters_shows_all_own_orders(client, user, orders_history):
+    other = User.objects.create_user(email='other@example.com', password='pass12345')
+    _order(other, Order.Status.PAID, timezone.now())
+    client.force_login(user)
+
+    assert _listed_ids(client) == {o.pk for o in orders_history.values()}
+
+
+def test_order_list_filters_by_status(client, user, orders_history):
+    client.force_login(user)
+
+    ids = _listed_ids(client, status=Order.Status.PAID)
+
+    assert ids == {orders_history['old_paid'].pk, orders_history['new_paid'].pk}
+
+
+def test_order_list_filters_by_date_range(client, user, orders_history):
+    client.force_login(user)
+
+    ids = _listed_ids(client, date_from='2026-03-01', date_to='2026-03-10')
+
+    assert ids == {orders_history['new_cancelled'].pk}
+
+
+def test_order_list_ignores_invalid_filter_values(client, user, orders_history):
+    client.force_login(user)
+
+    ids = _listed_ids(client, status='nonsense', date_from='2026-02-30', date_to='abc')
+
+    assert ids == {o.pk for o in orders_history.values()}

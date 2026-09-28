@@ -1,7 +1,9 @@
+from django.http import HttpRequest
+
 from .models import Cart
 
 
-def cart_badge(request):
+def cart_badge(request: HttpRequest) -> dict[str, int]:
     """Количество товаров в корзине для шапки сайта — без создания сессии/корзины впустую."""
     count = 0
     if request.user.is_authenticated:

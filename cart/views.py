@@ -1,4 +1,6 @@
+"""Веб-вьюхи корзины. Количество всегда ограничивается остатком на складе."""
 from django.contrib import messages
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext
 from django.views.decorators.http import require_POST
@@ -9,13 +11,15 @@ from .models import CartItem
 from .utils import get_cart
 
 
-def cart_detail(request):
+def cart_detail(request: HttpRequest) -> HttpResponse:
+    """Содержимое корзины (гостевой на сессии или пользовательской)."""
     cart = get_cart(request)
     return render(request, 'cart/cart.html', {'cart': cart})
 
 
 @require_POST
-def add_to_cart(request, product_id):
+def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
+    """Добавить товар (или увеличить количество); сверх остатка не добавляется — с сообщением."""
     product = get_object_or_404(Product, pk=product_id, is_active=True)
     cart = get_cart(request)
     try:
@@ -47,7 +51,8 @@ def add_to_cart(request, product_id):
 
 
 @require_POST
-def update_cart_item(request, item_id):
+def update_cart_item(request: HttpRequest, item_id: int) -> HttpResponse:
+    """Изменить количество позиции; 0 и меньше — удалить, больше остатка — урезать до остатка."""
     cart = get_cart(request)
     item = get_object_or_404(CartItem, pk=item_id, cart=cart)
     try:
@@ -72,7 +77,8 @@ def update_cart_item(request, item_id):
 
 
 @require_POST
-def remove_from_cart(request, item_id):
+def remove_from_cart(request: HttpRequest, item_id: int) -> HttpResponse:
+    """Удалить позицию из корзины."""
     cart = get_cart(request)
     get_object_or_404(CartItem, pk=item_id, cart=cart).delete()
     return redirect('cart:detail')

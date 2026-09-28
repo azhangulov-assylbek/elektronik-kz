@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import Group, Permission, PermissionsMixin
 from django.core.validators import RegexValidator
@@ -10,10 +12,15 @@ phone_validator = RegexValidator(
 )
 
 
-class UserManager(BaseUserManager):
+class UserManager(BaseUserManager['User']):
+    """Менеджер для User без username: нужен email или телефон (хотя бы одно)."""
+
     use_in_migrations = True
 
-    def _create_user(self, email=None, phone=None, password=None, **extra_fields):
+    def _create_user(
+        self, email: str | None = None, phone: str | None = None,
+        password: str | None = None, **extra_fields: Any,
+    ) -> 'User':
         if not email and not phone:
             raise ValueError('Нужно указать email или телефон')
         email = self.normalize_email(email) if email else None
@@ -22,12 +29,18 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_user(self, email=None, phone=None, password=None, **extra_fields):
+    def create_user(
+        self, email: str | None = None, phone: str | None = None,
+        password: str | None = None, **extra_fields: Any,
+    ) -> 'User':
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
         return self._create_user(email, phone, password, **extra_fields)
 
-    def create_superuser(self, email=None, phone=None, password=None, **extra_fields):
+    def create_superuser(
+        self, email: str | None = None, phone: str | None = None,
+        password: str | None = None, **extra_fields: Any,
+    ) -> 'User':
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         if extra_fields.get('is_staff') is not True:
@@ -38,6 +51,8 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    """Пользователь магазина: вход по email или телефону, роль — покупатель/продавец/администратор."""
+
     class Role(models.TextChoices):
         CUSTOMER = 'customer', _('Покупатель')
         SELLER = 'seller', _('Продавец')
@@ -79,16 +94,16 @@ class User(AbstractBaseUser, PermissionsMixin):
             ),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.email or self.phone or f'User #{self.pk}'
 
-    def get_full_name(self):
+    def get_full_name(self) -> str:
         return f'{self.first_name} {self.last_name}'.strip() or str(self)
 
-    def get_short_name(self):
+    def get_short_name(self) -> str:
         return self.first_name or str(self)
 
-    def save(self, *args, **kwargs):
+    def save(self, *args: Any, **kwargs: Any) -> None:
         if self.role == self.Role.ADMIN:
             # роль "администратор" всегда даёт доступ в /admin/ — не нужно
             # отдельно выставлять is_staff вручную
@@ -96,17 +111,19 @@ class User(AbstractBaseUser, PermissionsMixin):
         super().save(*args, **kwargs)
 
     @property
-    def can_manage_catalog(self):
+    def can_manage_catalog(self) -> bool:
         """Продавец и администратор работают с карточками товаров."""
         return self.is_superuser or self.role in (self.Role.SELLER, self.Role.ADMIN)
 
     @property
-    def can_bulk_import_catalog(self):
-        """Только администратор загружает каталог файлом (CSV/Excel)."""
+    def can_bulk_import_catalog(self) -> bool:
+        """Только администратор: импорт каталога в Django admin и модерация импортов продавцов."""
         return self.is_superuser or self.role == self.Role.ADMIN
 
 
 class Address(models.Model):
+    """Адрес доставки пользователя; один может быть адресом по умолчанию."""
+
     user = models.ForeignKey(
         User, verbose_name=_('пользователь'),
         related_name='addresses', on_delete=models.CASCADE,
@@ -124,13 +141,14 @@ class Address(models.Model):
         verbose_name_plural = _('адреса доставки')
         ordering = ['-is_default', 'id']
 
-    def __str__(self):
+    def __str__(self) -> str:
         parts = [self.city, self.street, self.house]
         if self.apartment:
             parts.append(f'{_("кв.")} {self.apartment}')
         return ', '.join(parts)
 
-    def save(self, *args, **kwargs):
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Если адрес помечен по умолчанию — снять эту отметку с остальных адресов пользователя."""
         super().save(*args, **kwargs)
         if self.is_default:
             Address.objects.filter(user=self.user).exclude(pk=self.pk).update(is_default=False)

@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 import os
 from pathlib import Path
-from os import getenv
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -31,9 +31,6 @@ load_dotenv(BASE_DIR / '.env')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
-
-
-
 
 
 # Application definition
@@ -96,7 +93,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 
@@ -139,6 +135,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+# Сюда collectstatic собирает статику для прода (раздаёт Caddy); в git не попадает.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -160,7 +158,8 @@ LOGOUT_REDIRECT_URL = 'products:home'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
+# В prod.py переопределяется на SMTP с OPTIONS (там значения не только строки).
+MAILERS: dict[str, dict[str, Any]] = {
     'default': {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },

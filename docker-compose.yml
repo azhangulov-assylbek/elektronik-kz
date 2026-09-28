@@ -1,14 +1,17 @@
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-elektronik}
       POSTGRES_USER: ${POSTGRES_USER:-elektronik}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-elektronik}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # Только на 127.0.0.1: с этой машины к базе можно подключиться (например,
+    # manage.py с хоста), снаружи — нет, даже если порт случайно откроют в firewall.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-elektronik}"]
       interval: 5s
@@ -17,14 +20,20 @@ services:
 
   web:
     build: .
+    restart: unless-stopped
     # Docker — только прод-конфигурация (config.settings.prod, PostgreSQL).
     # Локальная разработка запускается на хосте без Docker, на
     # config.settings.development (SQLite) — см. manage.py.
-    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000 --insecure"
+    # Наружу не публикуется: запросы приходят только через Caddy.
+    command: >
+      sh -c "python manage.py migrate --noinput
+      && python manage.py collectstatic --noinput
+      && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60"
     volumes:
       - media:/app/media
-    ports:
-      - "8000:8000"
+      - static:/app/staticfiles
+    expose:
+      - "8000"
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-dev-key}
@@ -34,10 +43,41 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-elektronik}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
+      EMAIL_HOST: ${EMAIL_HOST:-}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-true}
+      EMAIL_USE_SSL: ${EMAIL_USE_SSL:-false}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-noreply@elektronik.kz}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@elektronik.kz}
     depends_on:
       db:
         condition: service_healthy
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - static:/srv/static:ro
+      - media:/srv/media:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
 volumes:
   postgres_data:
   media:
+  static:
+  # Сертификаты Let's Encrypt — не удалять, иначе Caddy будет заново их
+  # запрашивать (у Let's Encrypt лимиты на частые запросы).
+  caddy_data:
+  caddy_config:

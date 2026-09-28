@@ -1,8 +1,11 @@
+"""Чтение файлов импорта и создание черновых товаров для bulk_import."""
 import csv
 import io
 from decimal import Decimal, InvalidOperation
+from typing import Any
 
 import openpyxl
+from django.core.files import File
 
 from products.models import Brand, Category, Product
 
@@ -15,6 +18,7 @@ CSV_ENCODINGS = ('utf-8-sig', 'utf-8', 'cp1251')
 
 
 def _decode_csv(raw_bytes: bytes) -> str:
+    """Декодировать CSV: UTF-8 (с BOM и без), затем cp1251; в крайнем случае — UTF-8 с заменой символов."""
     for encoding in CSV_ENCODINGS:
         try:
             return raw_bytes.decode(encoding)
@@ -23,10 +27,10 @@ def _decode_csv(raw_bytes: bytes) -> str:
     return raw_bytes.decode('utf-8', errors='replace')
 
 
-def parse_file(uploaded_file):
+def parse_file(uploaded_file: File) -> tuple[list[str], list[list[Any]]]:
     """Возвращает (headers, rows) — сырые заголовки и строки файла (CSV/.xlsx),
     без интерпретации колонок (это отдельный шаг — сопоставление продавцом)."""
-    filename = uploaded_file.name.lower()
+    filename = (uploaded_file.name or '').lower()
     if filename.endswith('.xlsx'):
         workbook = openpyxl.load_workbook(uploaded_file, data_only=True)
         sheet = workbook.active
@@ -113,6 +117,7 @@ def create_draft_product(row: ImportRow) -> None:
 
 
 def create_draft_products_for_batch(batch: ImportBatch) -> None:
+    """Создать черновые товары для всех строк батча, у которых товара ещё нет (повторный вызов безопасен)."""
     for row in batch.rows.select_related('product'):
         if row.product_id is None:
             create_draft_product(row)

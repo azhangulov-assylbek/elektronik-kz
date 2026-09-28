@@ -53,6 +53,20 @@ def test_catalog_filters_by_price(client, product, category, brand):
     assert names == ['Дешёвый']
 
 
+def test_catalog_ignores_invalid_price_filter(client, product):
+    response = client.get(reverse('products:home'), {'min_price': 'abc', 'max_price': 'NaN'})
+
+    assert response.status_code == 200
+    assert [p.name for p in response.context['products']] == [product.name]
+
+
+def test_api_ignores_invalid_price_filter(client, product):
+    response = client.get('/api/products/', {'price_min': 'abc', 'price_max': 'Infinity'})
+
+    assert response.status_code == 200
+    assert response.json()['count'] == 1
+
+
 def test_catalog_search_by_name(client, product):
     Product.objects.create(name='Другой товар', sku='SKU-3', price=1000, stock=1)
 

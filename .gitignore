@@ -17,4 +17,7 @@ media/
 import/**
 !import/**/
 !import/**/.gitkeep
+
+# Служебные файлы Claude Code — локальные, в репозиторий не выкладываются.
 CLAUDE.md
+.claude/

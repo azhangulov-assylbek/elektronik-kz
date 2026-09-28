@@ -1,0 +1,29 @@
+# Caddy — входная точка сайта: HTTPS (сертификат Let's Encrypt получает и
+# продлевает сам), редирект http → https и www → без www, раздача статики и
+# картинок товаров, остальное — в Django (gunicorn, сервис web).
+#
+# SITE_DOMAIN задаётся в .env на сервере (elektronik.kz). По умолчанию
+# localhost — для проверки прод-сборки на своей машине (сертификат тогда
+# самоподписанный, браузер покажет предупреждение — это нормально).
+
+{$SITE_DOMAIN:localhost} {
+	encode gzip
+
+	handle_path /static/* {
+		root * /srv/static
+		file_server
+	}
+
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+	}
+
+	handle {
+		reverse_proxy web:8000
+	}
+}
+
+www.{$SITE_DOMAIN:localhost} {
+	redir https://{$SITE_DOMAIN:localhost}{uri} permanent
+}

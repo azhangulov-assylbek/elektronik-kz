@@ -19,6 +19,8 @@ REQUIRED_MAPPED_FIELDS = {'name', 'sku', 'price'}
 
 
 class ImportBatch(models.Model):
+    """Одна загрузка файла каталога продавцом: файл, маппинг колонок, статус и решение модератора."""
+
     class Status(models.TextChoices):
         UPLOADED = 'uploaded', _('Файл загружен')
         MAPPED = 'mapped', _('Колонки сопоставлены')
@@ -48,16 +50,19 @@ class ImportBatch(models.Model):
         verbose_name_plural = _('импорты каталога')
         ordering = ['-created_at']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Импорт #{self.pk} ({self.get_status_display()})'
 
     @property
-    def all_images_uploaded(self):
+    def all_images_uploaded(self) -> bool:
+        """У батча есть созданные товары, и у каждого загружена картинка — можно отправлять на модерацию."""
         rows = self.rows.filter(product__isnull=False)
         return rows.exists() and not rows.filter(product__image='').exists()
 
 
 class ImportRow(models.Model):
+    """Строка файла импорта по маппингу (raw_data) и созданный из неё товар либо ошибка."""
+
     batch = models.ForeignKey(ImportBatch, verbose_name=_('импорт'), related_name='rows', on_delete=models.CASCADE)
     row_number = models.PositiveIntegerField(_('номер строки'))
     raw_data = models.JSONField(_('данные строки'), default=dict)
@@ -72,5 +77,5 @@ class ImportRow(models.Model):
         verbose_name_plural = _('строки импорта')
         ordering = ['row_number']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Строка {self.row_number} импорта #{self.batch_id}'

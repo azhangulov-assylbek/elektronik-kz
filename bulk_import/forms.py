@@ -1,3 +1,5 @@
+from typing import Any
+
 from django import forms
 
 from .models import MAPPABLE_FIELDS
@@ -12,7 +14,7 @@ class BatchUploadForm(forms.Form):
 class ColumnMappingForm(forms.Form):
     """Динамическая форма: по одному select-полю на каждую колонку файла."""
 
-    def __init__(self, *args, headers=None, **kwargs):
+    def __init__(self, *args: Any, headers: list[str] | None = None, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         choices = [(IGNORE_COLUMN, '— игнорировать —')] + list(MAPPABLE_FIELDS.items())
         for index, header in enumerate(headers or []):
@@ -22,9 +24,9 @@ class ColumnMappingForm(forms.Form):
                 required=False,
             )
 
-    def get_mapping(self):
+    def get_mapping(self) -> dict[str, str]:
         """{'0': 'name', '2': 'price', ...} — только реально сопоставленные колонки."""
-        mapping = {}
+        mapping: dict[str, str] = {}
         for name, value in self.cleaned_data.items():
             if value:
                 index = name.removeprefix('column_')

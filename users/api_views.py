@@ -1,5 +1,7 @@
+"""REST API пользователей: регистрация и вход с выдачей пары JWT-токенов."""
 from django.contrib.auth import authenticate
 from rest_framework import permissions, status
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -8,9 +10,11 @@ from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
 
 
 class RegisterView(APIView):
+    """POST /api/users/register/ — создать аккаунт и сразу вернуть access/refresh токены."""
+
     permission_classes = [permissions.AllowAny]
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -26,9 +30,11 @@ class RegisterView(APIView):
 
 
 class LoginView(APIView):
+    """POST /api/users/login/ — вход по email или телефону, возвращает access/refresh токены."""
+
     permission_classes = [permissions.AllowAny]
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = authenticate(

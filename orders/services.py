@@ -1,23 +1,32 @@
+"""Бизнес-логика заказов — общая для веб-checkout и REST API."""
+from collections.abc import Mapping
+from typing import Any
+
 from django.db import transaction
 from django.db.models import F
 
+from cart.models import Cart
 from payments.services import create_payment
 from products.models import Product
+
+from users.models import User
 
 from .models import Order, OrderItem
 
 
 class InsufficientStockError(Exception):
-    def __init__(self, details):
+    """В корзине больше товара, чем на складе; details — [{'product': название, 'available': остаток}]."""
+
+    def __init__(self, details: list[dict[str, Any]]) -> None:
         self.details = details
         super().__init__(details)
 
 
 class EmptyCartError(Exception):
-    pass
+    """Попытка оформить заказ из пустой корзины."""
 
 
-def create_order_from_cart(*, user, cart, order_data):
+def create_order_from_cart(*, user: User, cart: Cart, order_data: Mapping[str, Any]) -> Order:
     """Атомарно создаёт заказ из корзины: проверяет остатки, списывает stock, чистит корзину."""
     with transaction.atomic():
         items = list(cart.items.select_related('product'))
@@ -64,13 +73,13 @@ def create_order_from_cart(*, user, cart, order_data):
 
 
 class OrderCannotBeCancelledError(Exception):
-    pass
+    """Заказ уже в статусе, из которого отмена запрещена (подтверждён, отправлен и т.д.)."""
 
 
 CANCELLABLE_STATUSES = {Order.Status.NEW, Order.Status.PAID}
 
 
-def cancel_order(order):
+def cancel_order(order: Order) -> Order:
     """Отменяет заказ и возвращает товары на склад. Разрешено только для новых/оплаченных заказов."""
     if order.status not in CANCELLABLE_STATUSES:
         raise OrderCannotBeCancelledError(order.status)

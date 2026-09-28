@@ -1,5 +1,6 @@
 import os
 from decimal import Decimal
+from typing import Any
 
 from django.core.files import File
 from django.core.management.base import BaseCommand
@@ -110,7 +111,7 @@ PRODUCTS = [
 class Command(BaseCommand):
     help = 'Наполняет каталог моковыми категориями, брендами и товарами (для разработки/демо).'
 
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
         categories = {}
         for name in CATEGORIES:
             category, _ = Category.objects.get_or_create(name=name)

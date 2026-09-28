@@ -1,9 +1,16 @@
+"""Простой импорт каталога из CSV/.xlsx для администратора (Django admin): upsert товаров по sku.
+
+Не путать с bulk_import — пошаговым импортом продавца с модерацией.
+"""
 import csv
 import io
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
+from typing import Any
 
 import openpyxl
+from django.core.files.uploadedfile import UploadedFile
 
 from .models import Brand, Category, Product
 
@@ -15,6 +22,7 @@ CSV_ENCODINGS = ('utf-8-sig', 'utf-8', 'cp1251')
 
 
 def _decode_csv(raw_bytes: bytes) -> str:
+    """Декодировать CSV: UTF-8 (с BOM и без), затем cp1251; в крайнем случае — UTF-8 с заменой символов."""
     for encoding in CSV_ENCODINGS:
         try:
             return raw_bytes.decode(encoding)
@@ -25,14 +33,16 @@ def _decode_csv(raw_bytes: bytes) -> str:
 
 @dataclass
 class ImportResult:
+    """Итог импорта: сколько товаров создано/обновлено и построчные ошибки."""
+
     created: int = 0
     updated: int = 0
-    errors: list = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
 
-def _read_rows(uploaded_file):
+def _read_rows(uploaded_file: UploadedFile) -> Iterator[dict[str, Any]]:
     """Возвращает построчно словари {колонка: значение} из CSV или .xlsx."""
-    filename = uploaded_file.name.lower()
+    filename = (uploaded_file.name or '').lower()
     if filename.endswith('.xlsx'):
         workbook = openpyxl.load_workbook(uploaded_file, data_only=True)
         sheet = workbook.active
@@ -49,7 +59,7 @@ def _read_rows(uploaded_file):
             yield {(key or '').strip().lower(): value for key, value in row.items()}
 
 
-def import_catalog(uploaded_file) -> ImportResult:
+def import_catalog(uploaded_file: UploadedFile) -> ImportResult:
     """Импортирует товары из CSV/.xlsx, обновляя существующие по артикулу (sku)."""
     result = ImportResult()
     rows = list(_read_rows(uploaded_file))
@@ -72,7 +82,8 @@ def import_catalog(uploaded_file) -> ImportResult:
     return result
 
 
-def _import_row(row, result: ImportResult) -> None:
+def _import_row(row: dict[str, Any], result: ImportResult) -> None:
+    """Создать или обновить один товар; ValueError — ошибка строки (попадёт в отчёт, импорт продолжится)."""
     name = str(row.get('name') or '').strip()
     sku = str(row.get('sku') or '').strip()
     price_raw = row.get('price')

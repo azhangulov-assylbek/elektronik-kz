@@ -9,7 +9,7 @@
 ## Стек
 
 - Python 3.13, Django 6.1, Django REST Framework, SimpleJWT, drf-spectacular
-- PostgreSQL — единственная поддерживаемая БД (через Docker Compose или локально)
+- PostgreSQL — в Docker Compose (prod), SQLite — для локальной разработки без Docker
 - Русский и казахский языки интерфейса
 - pytest-django, flake8, mypy (django-stubs)
 
@@ -20,30 +20,49 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Приложение поднимется на `http://localhost:8000/`, миграции применяются
-автоматически при старте контейнера `web`, база — PostgreSQL в контейнере `db`.
+Это прод-сборка — та же, что на сервере: Caddy (HTTPS, статика и картинки)
+→ gunicorn (`web`, настройки `config.settings.prod`, `DEBUG=False`) →
+PostgreSQL (`db`). Сайт откроется на `https://localhost/` — сертификат на
+localhost самоподписанный, браузер покажет предупреждение, это нормально.
+Миграции и `collectstatic` выполняются при старте контейнера `web`.
 
-## Запуск без Docker (Postgres поднимаем отдельно)
+Наполнить каталог демо-товарами (31 товар, 9 категорий, с картинками):
 
-PostgreSQL — единственная поддерживаемая БД, SQLite-фолбэка нет. Проще
-всего поднять только контейнер с базой и запускать Django на хосте:
+```bash
+docker compose exec web python manage.py seed_products
+```
+
+## Настройки: development и prod
+
+Настройки — пакет `config/settings/`:
+
+| Модуль | БД | DEBUG | Где используется |
+|---|---|---|---|
+| `config.settings.development` | SQLite (`db.sqlite3`) | `True` | по умолчанию: `manage.py`, `pytest`, `mypy` |
+| `config.settings.prod` | PostgreSQL (`POSTGRES_*` из окружения) | `False` | Docker Compose (`DJANGO_SETTINGS_MODULE` задан в `docker-compose.yml`) |
+
+Общие настройки — в `config/settings/base.py`, там же подгружается `.env`.
+
+## Запуск без Docker (локальная разработка, SQLite)
 
 ```bash
 cp .env.example .env
-docker compose up -d db          # только PostgreSQL, порт 5432 на хосте
-
 python -m venv .venv
 source .venv/Scripts/activate    # Windows (Git Bash); .venv\Scripts\activate на cmd
 pip install -r requirements.txt
 python manage.py migrate
+python manage.py seed_products   # необязательно: демо-каталог
 python manage.py runserver
 ```
 
-Значения в `.env.example` (`POSTGRES_HOST=localhost` и т.д.) рассчитаны
-именно на этот сценарий. Вместо `docker compose up -d db` подойдёт и
-локально установленный PostgreSQL с теми же реквизитами.
+PostgreSQL для этого сценария не нужен. Если нужно проверить что-то на
+реальном Postgres с хоста — `docker compose up -d db` (порт 5432 опубликован только на 127.0.0.1)
+и запуск с `DJANGO_SETTINGS_MODULE=config.settings.prod`.
 
 ## REST API и JWT
+
+Примеры ниже — для локального `runserver` (порт 8000); в Docker/на сервере
+тот же путь на `https://<домен>/`.
 
 Документация (Swagger UI): `http://localhost:8000/api/docs/`
 Схема OpenAPI: `http://localhost:8000/api/schema/`
@@ -96,6 +115,30 @@ curl -X POST http://localhost:8000/api/users/token/refresh/ \
   Ошибочные строки (нет цены/названия) отклоняются с указанием номера
   строки, остальные при этом импортируются.
 
+## Модерируемый импорт каталога продавцом (`bulk_import`)
+
+Отдельный от админского импорта пошаговый процесс для продавца — `/seller/import/`
+(ссылка «Импорт каталога» в шапке):
+
+1. Загрузка файла (CSV или .xlsx; CSV читается в UTF-8 или Windows-1251 —
+   типичной кодировке выгрузок из 1С/Excel).
+2. Превью первых строк и ручное сопоставление колонок файла полям товара.
+3. Превью данных по маппингу; подтверждение создаёт скрытые товары
+   (`is_active=False`) — в каталоге их пока не видно.
+4. Загрузка картинки к каждому товару — без этого отправить на модерацию нельзя.
+5. Администратор («Модерация импортов», `/seller/import/moderation/`)
+   одобряет партию (товары появляются в каталоге) или отклоняет с указанием
+   причины.
+
+Каждый шаг доступен только в своём статусе импорта: после отправки на
+модерацию продавец уже не может пересопоставить колонки, пересоздать товары
+или поменять картинки (попытка перенаправляет на актуальный шаг или к списку).
+
+Каждая загрузка хранится как `ImportBatch` (файл, статус, маппинг, кто и когда
+загрузил/проверил), строки — `ImportRow` с построчными ошибками (например,
+дубликат SKU не роняет всю партию). Добавление одного товара через
+`/seller/products/add/` модерации не требует.
+
 Тестовые аккаунты (только для разработки):
 - Продавец: `seller@elektronik.kz`
 - Администратор: `admin@example.com` / `admin` (тот же тестовый суперпользователь)
@@ -107,14 +150,71 @@ from users.models import User
 User.objects.create_user(email='seller@elektronik.kz', password='...', role=User.Role.SELLER)
 ```
 
+## Ветки
+
+| Ветка | Назначение |
+|---|---|
+| `production` | стабильная версия — то, что разворачивается (Docker, PostgreSQL) |
+| `development` | текущая разработка; новые задачи — в ветках `feature/...` от неё |
+
+Готовые изменения попадают в `development` из `feature/...`, а в
+`production` — слиянием `development` через Pull Request.
+
+Код в обеих ветках одинаковый: база данных выбирается **модулем настроек, а
+не веткой** (см. «Настройки: development и prod» выше). Локально проект
+запускается с `config.settings.development` (SQLite), в Docker — с
+`config.settings.prod` (PostgreSQL). Поэтому при слиянии `development` →
+`production` настройки БД не конфликтуют и SQLite в прод не попадает.
+
+## Деплой (AWS Lightsail)
+
+Сервер — Ubuntu на Lightsail с Docker; на нём работает тот же
+`docker-compose.yml`: Caddy сам получает и продлевает HTTPS-сертификат
+Let's Encrypt, раздаёт `/static/` и `/media/`, остальное проксирует в
+gunicorn. Postgres и gunicorn наружу не открыты.
+
+**Первичная настройка** (один раз):
+
+1. Lightsail: инстанс Ubuntu 24.04 (от 1 ГБ RAM), статический IP, в firewall
+   открыты только 22, 80, 443. На сервере — Docker и swap.
+2. DNS домена (у регистратора): A-записи `@` и `www` → статический IP.
+3. Доступ сервера к репозиторию — deploy key (только чтение).
+4. Клонировать ветку `production` в `~/elektronik-kz` и создать там `.env`:
+   ```
+   DJANGO_SECRET_KEY=<python3 -c "import secrets; print(secrets.token_urlsafe(50))">
+   SITE_DOMAIN=elektronik.kz
+   ALLOWED_HOSTS=elektronik.kz,www.elektronik.kz
+   POSTGRES_PASSWORD=<длинный случайный пароль>
+   # EMAIL_HOST=... — если не задан, письма пишутся в лог `web`, а не отправляются
+   ```
+5. `docker compose up -d --build`, затем
+   `docker compose exec web python manage.py createsuperuser`.
+
+**Автообновление** — `.github/workflows/deploy.yml`: каждый push в
+`production` (обычно слияние PR из `development`) заходит на сервер по SSH и
+выполняет `git reset --hard origin/production` + `docker compose up -d --build`.
+Запустить вручную — вкладка Actions → Deploy → Run workflow. Нужны секреты
+репозитория `SSH_HOST`, `SSH_USER`, `SSH_KEY` (ключ, чей `.pub` лежит в
+`~/.ssh/authorized_keys` на сервере). `.env` и данные (тома Docker) при
+деплое не затрагиваются.
+
+**Полезное на сервере:**
+
+```bash
+docker compose ps                    # состояние контейнеров
+docker compose logs -f web           # логи Django/gunicorn (и письма, если SMTP не настроен)
+docker compose logs -f caddy         # логи Caddy (получение сертификата)
+docker compose exec db pg_dump -U elektronik elektronik > backup.sql   # дамп базы
+```
+
 ## Тесты и линтеры
 
 ```bash
 pip install -r requirements-dev.txt
 
-pytest                 # 52 теста: каталог, корзина, заказы, оплата, auth, API, роли
+pytest                 # 88 тестов: каталог, корзина, заказы, оплата, auth, API, роли, импорт
 flake8 .
-mypy .
+mypy .                 # строгий режим: все функции проекта (кроме тестов) аннотированы
 ```
 
 ## Переводы (i18n)
@@ -160,30 +260,35 @@ with open('locale/kk/LC_MESSAGES/django.mo', 'wb') as f:
 - `orders/` — заказы, email-уведомления, бизнес-логика в `services.py`
 - `payments/` — оплата заказа (мок): `Payment` (способ/статус), `services.py:create_payment`
 - `reviews/` — отзывы на товары (только после покупки)
+- `bulk_import/` — пошаговый импорт каталога продавцом с модерацией администратором
 - `api/` — сборка urls.py для REST API (сериализаторы и вьюхи лежат в каждом
   домене рядом с моделями — `<app>/serializers.py`, `<app>/api_views.py`)
 - `locale/` — переводы интерфейса (казахский)
 - `templates/` — общий `base.html`
+- `import/` — рабочая папка для сырых прайс-листов поставщиков (сами файлы в git не попадают)
 
 ## Чек-лист по ТЗ
 
 - [x] Проект запускается через Docker Compose (проверено: `db` + `web` поднимаются, миграции применяются к реальному PostgreSQL)
-- [x] PostgreSQL используется (единственная БД — в Docker и локально, SQLite убран)
+- [x] PostgreSQL используется (в Docker Compose / prod; локальная разработка — SQLite)
 - [x] Каталог: фильтры (категория, цена), поиск, сортировка, пагинация
 - [x] Страница товара: детали, отзывы (только после покупки), добавление в корзину
 - [x] Корзина: управление, расчёт, проверка остатков (клиент + сервер)
 - [x] Оформление заказа: создание, email, мок оплаты, валидация
-- [x] Личный кабинет: регистрация (email/телефон), вход, история заказов,
-      редактирование профиля, смена пароля, адреса доставки
+- [x] Личный кабинет: регистрация (email/телефон), вход, история заказов
+      (фильтр по статусу и периоду), редактирование профиля, смена пароля, адреса доставки
 - [x] REST API: JWT, документация (Swagger), права доступа (только свои данные)
 - [x] Админка: аналитика (выручка, топ-товары), фильтры, кастомные actions
 - [x] Swagger/OpenAPI работает (`/api/docs/`)
-- [x] Типизация (mypy + django-stubs) и докстринги там, где логика неочевидна
-- [x] Линтер (flake8) без ошибок
-- [x] Базовые тесты проходят (50 тестов, pytest-django)
+- [x] Типизация: аннотированы все функции и методы (mypy + django-stubs, `disallow_untyped_defs`);
+      докстринги у всех вьюх, API и сервисов
+- [x] Линтеры (flake8, mypy) без ошибок
+- [x] Тесты проходят (88 тестов, pytest-django)
 - [x] Роли продавца и администратора: карточки товаров и массовая загрузка каталога файлом
+- [x] Модерируемый импорт каталога продавцом (`bulk_import`)
 - [x] README (этот файл)
 - [x] Коммиты осмысленные, история сохранена
+- [x] Ветки: `production` (стабильная) и `development` (разработка), задачи — в `feature/...`
 - [ ] Ссылка на деплой / скринкаст — не делали, магазин пока не задеплоен
 - [ ] GraphQL — не делали (опционально по ТЗ)
 
@@ -191,4 +296,4 @@ with open('locale/kk/LC_MESSAGES/django.mo', 'wb') as f:
 
 ## История
 
-Ранее проект существовал в двух параллельных версиях — заброшенный Laravel-скелет в этом репозитории и рабочий демо-магазин на WordPress/WooCommerce на хостинге. Оба варианта закрыты в пользу Django. Источник товарного ассортимента — прайс-листы поставщиков (FDCOM, Marvel), которые пока хранятся отдельно в Google Drive и ещё не подключены к проекту.
+Ранее проект существовал в двух параллельных версиях — заброшенный Laravel-скелет в этом репозитории и рабочий демо-магазин на WordPress/WooCommerce на хостинге. Оба варианта закрыты в пользу Django. Источник товарного ассортимента — прайс-листы поставщиков (FDCOM, Comportal, Alser, Marvel); сырые файлы складываются в папку `import/` и загружаются через импорт каталога.

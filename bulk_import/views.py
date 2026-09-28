@@ -1,15 +1,24 @@
+"""Пошаговый импорт каталога продавцом и модерация импортов администратором.
+
+Шаги продавца: загрузка файла → сопоставление колонок → превью → создание
+черновых товаров (is_active=False) → картинки → отправка на модерацию.
+"""
+from collections.abc import Callable
 from functools import wraps
+from typing import Any
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.translation import gettext
 
 from products.models import Product
 from products.seller_views import seller_required
+from users.types import AuthenticatedHttpRequest
 
 from .forms import BatchUploadForm, ColumnMappingForm, RejectBatchForm, RowImageForm
 from .models import MAPPABLE_FIELDS, ImportBatch
@@ -18,26 +27,50 @@ from .services import build_rows_from_mapping, create_draft_products_for_batch, 
 PREVIEW_ROWS = 5
 ROWS_PAGE_SIZE = 20
 
+# Шаг продавца (URL name) для каждого статуса. У отправленных на модерацию,
+# одобренных и отклонённых импортов шагов больше нет — их менять нельзя.
+STEP_FOR_STATUS = {
+    ImportBatch.Status.UPLOADED: 'bulk_import:batch_map',
+    ImportBatch.Status.MAPPED: 'bulk_import:batch_preview',
+    ImportBatch.Status.IMAGES_PENDING: 'bulk_import:batch_images',
+}
 
-def moderator_required(view_func):
+
+def moderator_required(view_func: Callable[..., HttpResponse]) -> Callable[..., HttpResponse]:
     """Доступ только администраторам (User.can_bulk_import_catalog)."""
     @wraps(view_func)
     @login_required
-    def wrapper(request, *args, **kwargs):
+    def wrapper(request: AuthenticatedHttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
         if not request.user.can_bulk_import_catalog:
             raise PermissionDenied
         return view_func(request, *args, **kwargs)
     return wrapper
 
 
+def _step_unavailable(request: AuthenticatedHttpRequest, batch: ImportBatch) -> HttpResponse:
+    """Шаг не соответствует статусу импорта — предупредить и отправить на актуальный шаг (или к списку)."""
+    messages.warning(
+        request,
+        gettext('Этот шаг для импорта #%(id)s сейчас недоступен (статус: %(status)s).') % {
+            'id': batch.pk, 'status': batch.get_status_display(),
+        },
+    )
+    step = STEP_FOR_STATUS.get(ImportBatch.Status(batch.status))
+    if step:
+        return redirect(step, pk=batch.pk)
+    return redirect('bulk_import:batch_list')
+
+
 @seller_required
-def batch_list(request):
+def batch_list(request: AuthenticatedHttpRequest) -> HttpResponse:
+    """Свои импорты продавца со статусами."""
     batches = request.user.import_batches.all()
     return render(request, 'bulk_import/batch_list.html', {'batches': batches})
 
 
 @seller_required
-def batch_upload(request):
+def batch_upload(request: AuthenticatedHttpRequest) -> HttpResponse:
+    """Шаг 1: загрузка файла CSV/.xlsx."""
     if request.method == 'POST':
         form = BatchUploadForm(request.POST, request.FILES)
         if form.is_valid():
@@ -50,8 +83,12 @@ def batch_upload(request):
 
 
 @seller_required
-def batch_map(request, pk):
+def batch_map(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
+    """Шаг 2: превью первых строк и сопоставление колонок файла полям товара."""
     batch = get_object_or_404(ImportBatch, pk=pk, seller=request.user)
+    # Пересопоставить можно, пока товары ещё не созданы.
+    if batch.status not in (ImportBatch.Status.UPLOADED, ImportBatch.Status.MAPPED):
+        return _step_unavailable(request, batch)
     headers, rows = parse_file(batch.file)
     preview_rows = rows[:PREVIEW_ROWS]
 
@@ -73,8 +110,11 @@ def batch_map(request, pk):
 
 
 @seller_required
-def batch_preview(request, pk):
+def batch_preview(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
+    """Шаг 3: данные по маппингу; POST создаёт черновые товары (is_active=False)."""
     batch = get_object_or_404(ImportBatch, pk=pk, seller=request.user)
+    if batch.status != ImportBatch.Status.MAPPED:
+        return _step_unavailable(request, batch)
     field_names = list(dict.fromkeys(batch.column_mapping.values()))
 
     if request.method == 'POST':
@@ -93,24 +133,32 @@ def batch_preview(request, pk):
 
 
 @seller_required
-def batch_images(request, pk):
+def batch_images(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
+    """Шаг 4: список созданных товаров для загрузки картинок."""
     batch = get_object_or_404(ImportBatch, pk=pk, seller=request.user)
+    if batch.status != ImportBatch.Status.IMAGES_PENDING:
+        return _step_unavailable(request, batch)
     rows_qs = batch.rows.filter(product__isnull=False).select_related('product')
     page_obj = Paginator(rows_qs, ROWS_PAGE_SIZE).get_page(request.GET.get('page'))
     return render(request, 'bulk_import/batch_images.html', {'batch': batch, 'rows': page_obj, 'page_obj': page_obj})
 
 
 @seller_required
-def batch_image_upload(request, pk, row_id):
+def batch_image_upload(request: AuthenticatedHttpRequest, pk: int, row_id: int) -> HttpResponse:
+    """Загрузить картинку к одному товару импорта."""
     batch = get_object_or_404(ImportBatch, pk=pk, seller=request.user)
+    if batch.status != ImportBatch.Status.IMAGES_PENDING:
+        return _step_unavailable(request, batch)
     row = get_object_or_404(batch.rows.select_related('product'), pk=row_id, product__isnull=False)
 
     if request.method == 'POST':
         form = RowImageForm(request.POST, request.FILES)
         if form.is_valid():
-            row.product.image = form.cleaned_data['image']
-            row.product.save(update_fields=['image'])
-            messages.success(request, gettext('Картинка сохранена: %(name)s') % {'name': row.product.name})
+            product = row.product
+            assert product is not None  # отфильтровано product__isnull=False выше
+            product.image = form.cleaned_data['image']
+            product.save(update_fields=['image'])
+            messages.success(request, gettext('Картинка сохранена: %(name)s') % {'name': product.name})
         else:
             messages.error(request, gettext('Не удалось загрузить картинку — проверьте формат файла'))
 
@@ -118,8 +166,11 @@ def batch_image_upload(request, pk, row_id):
 
 
 @seller_required
-def batch_submit(request, pk):
+def batch_submit(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
+    """Шаг 5: отправить на модерацию — только когда у всех товаров есть картинка."""
     batch = get_object_or_404(ImportBatch, pk=pk, seller=request.user)
+    if batch.status != ImportBatch.Status.IMAGES_PENDING:
+        return _step_unavailable(request, batch)
 
     if request.method == 'POST':
         if not batch.all_images_uploaded:
@@ -134,15 +185,18 @@ def batch_submit(request, pk):
 
 
 @moderator_required
-def moderation_list(request):
+def moderation_list(request: AuthenticatedHttpRequest) -> HttpResponse:
+    """Импорты, ожидающие решения администратора."""
     batches = ImportBatch.objects.filter(status=ImportBatch.Status.PENDING_APPROVAL).select_related('seller')
     return render(request, 'bulk_import/moderation_list.html', {'batches': batches})
 
 
 @moderator_required
-def moderation_detail(request, pk):
+def moderation_detail(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
+    """Товары импорта; POST action=approve публикует их в каталоге, action=reject — отклоняет с причиной."""
     batch = get_object_or_404(ImportBatch, pk=pk, status=ImportBatch.Status.PENDING_APPROVAL)
     rows = batch.rows.filter(product__isnull=False).select_related('product')
+    form = RejectBatchForm()
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -165,7 +219,5 @@ def moderation_detail(request, pk):
                 batch.save(update_fields=['status', 'reviewed_by', 'reviewed_at', 'rejection_reason'])
                 messages.success(request, gettext('Импорт отклонён.'))
                 return redirect('bulk_import:moderation_list')
-    else:
-        form = RejectBatchForm()
 
     return render(request, 'bulk_import/moderation_detail.html', {'batch': batch, 'rows': rows, 'form': form})
