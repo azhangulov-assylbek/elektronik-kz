@@ -3,7 +3,7 @@
 # Deploy → Run workflow.
 #
 # Секреты репозитория (Settings → Secrets and variables → Actions):
-#   SSH_HOST — статический IP сервера
+#   SSH_HOST — статический IP сервера, например 1.2.3.4 (без точки в конце)
 #   SSH_USER — пользователь (ubuntu)
 #   SSH_KEY  — приватный ключ, чей .pub добавлен в ~/.ssh/authorized_keys на сервере
 #
@@ -26,22 +26,61 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Настроить SSH
+      # Секреты часто портятся при копировании (пробелы, перевод строки,
+      # точка в конце адреса, склеенные строки ключа, \r из Windows) — здесь
+      # они очищаются и проверяются, а при ошибке выводится понятная причина.
+      - name: Проверить секреты и подготовить SSH
         env:
           SSH_KEY: ${{ secrets.SSH_KEY }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
-
-      - name: Обновить код и перезапустить контейнеры
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" 'bash -s' <<'EOF'
+          fail() { echo "::error::$1"; exit 1; }
+
+          host="$(printf '%s' "$SSH_HOST" | tr -d '[:space:]')"
+          host="${host%.}"
+          [ -n "$host" ] || fail "Секрет SSH_HOST пустой или не задан."
+          [[ "$host" =~ ^[A-Za-z0-9.-]+$ ]] \
+            || fail "SSH_HOST содержит недопустимые символы (кириллица? например «ю» вместо точки). Нужен IP вида 1.2.3.4."
+
+          user="$(printf '%s' "$SSH_USER" | tr -d '[:space:]')"
+          [ -n "$user" ] || fail "Секрет SSH_USER пустой или не задан."
+          [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ ]] \
+            || fail "SSH_USER содержит недопустимые символы (русская раскладка?). Обычно это: ubuntu"
+
+          key="$(printf '%s' "$SSH_KEY" | tr -d '\r')"
+          [ -n "$key" ] || fail "Секрет SSH_KEY пустой или не задан."
+          [[ "$key" =~ -----BEGIN\ ([A-Z ]*PRIVATE\ KEY)----- ]] \
+            || fail "SSH_KEY: нет строки -----BEGIN ... PRIVATE KEY-----. Скопируйте ключ целиком, вместе с первой строкой."
+          kind="${BASH_REMATCH[1]}"
+          begin="-----BEGIN $kind-----"
+          end="-----END $kind-----"
+          [[ "$key" == *"$end"* ]] \
+            || fail "SSH_KEY: нет строки $end. Скопируйте ключ целиком, вместе с последней строкой."
+          # Тело ключа — base64 между BEGIN и END; пробелы/переводы строк в нём
+          # не значимы, поэтому убираем их все и заново режем по 70 символов.
+          body="${key#*"$begin"}"
+          body="${body%%"$end"*}"
+          body="$(printf '%s' "$body" | tr -d '[:space:]')"
+          [[ "$body" =~ ^[A-Za-z0-9+/=]+$ ]] \
+            || fail "SSH_KEY: внутри ключа посторонние символы. Скопируйте ключ заново."
+
+          install -m 700 -d ~/.ssh
+          { echo "$begin"; printf '%s' "$body" | fold -w 70; echo; echo "$end"; } > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null \
+            || fail "SSH_KEY не читается как приватный ключ — видимо, при копировании потерялась часть строк. Скопируйте ключ заново."
+
+          echo "DEPLOY_HOST=$host" >> "$GITHUB_ENV"
+          echo "DEPLOY_USER=$user" >> "$GITHUB_ENV"
+          echo "Секреты в порядке: подключение к $user@$host"
+
+      - name: Обновить код и перезапустить контейнеры
+        run: |
+          # accept-new: при первом подключении запоминает отпечаток сервера.
+          ssh -i ~/.ssh/deploy_key \
+            -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
+            "$DEPLOY_USER@$DEPLOY_HOST" 'bash -s' <<'EOF'
           set -euo pipefail
           cd ~/elektronik-kz
           git fetch origin production
