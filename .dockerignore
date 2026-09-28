@@ -8,3 +8,10 @@ db.sqlite3
 media/
 .env
 *.log
+
+# Не нужно внутри образа: сырые прайс-листы поставщиков, собранная статика,
+# служебные файлы Claude Code и CI.
+import/
+staticfiles/
+CLAUDE.md
+.github/
