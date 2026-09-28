@@ -2,6 +2,7 @@ import io
 
 import openpyxl
 import pytest
+from django.core.management import CommandError, call_command
 from django.urls import reverse
 
 from products.models import Brand, Category, Product
@@ -248,3 +249,38 @@ def test_csv_import_handles_cp1251_encoding(client, admin_role_user):
 
     assert response.status_code == 302
     assert Product.objects.filter(sku='CP1251-1', name='Кириллица CP1251').exists()
+
+
+@pytest.fixture
+def media_tmp(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    return tmp_path
+
+
+def test_seed_products_refuses_on_production_without_force(settings, media_tmp):
+    settings.DEBUG = False
+
+    with pytest.raises(CommandError, match='--force'):
+        call_command('seed_products', stdout=io.StringIO())
+
+    assert not Product.objects.exists()
+
+
+def test_seed_products_with_force_fills_catalog_with_images(settings, media_tmp):
+    settings.DEBUG = False
+
+    call_command('seed_products', '--force', stdout=io.StringIO())
+
+    assert Product.objects.active().count() == 31
+    assert not Product.objects.filter(image='').exists()
+
+
+def test_seed_products_deactivate_hides_only_demo_products(settings, media_tmp, product):
+    settings.DEBUG = False
+    call_command('seed_products', '--force', stdout=io.StringIO())
+
+    call_command('seed_products', '--deactivate', stdout=io.StringIO())
+
+    assert Product.objects.active().count() == 1  # остался только «настоящий» товар из фикстуры
+    assert Product.objects.active().get() == product
+    assert Category.objects.filter(name='Ноутбуки').exists()

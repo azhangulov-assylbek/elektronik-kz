@@ -29,8 +29,15 @@ localhost самоподписанный, браузер покажет пред
 Наполнить каталог демо-товарами (31 товар, 9 категорий, с картинками):
 
 ```bash
-docker compose exec web python manage.py seed_products
+docker compose exec web python manage.py seed_products --force
 ```
+
+`--force` нужен, потому что Docker-сборка — это прод (`DEBUG=False`): без
+флага команда откажется работать, чтобы выдуманные товары случайно не
+попали на боевой сайт (там их увидят и смогут заказать покупатели). Скрыть
+демо-товары обратно (например, после показа): `seed_products --deactivate` —
+товары не удаляются (на них могут ссылаться заказы), категории и бренды
+остаются.
 
 ## Настройки: development и prod
 
@@ -189,6 +196,11 @@ gunicorn. Postgres и gunicorn наружу не открыты.
    ```
 5. `docker compose up -d --build`, затем
    `docker compose exec web python manage.py createsuperuser`.
+
+⚠️ Демо-каталог (`seed_products`) на боевом сервере не запускать: товары
+выдуманные, но их можно заказать. Команда без `--force` на сервере и не
+запустится. Если демо всё же нужно временно (показ проекта) — `--force`,
+а после показа `seed_products --deactivate`.
 
 **Автообновление** — `.github/workflows/deploy.yml`: каждый push в
 `production` (обычно слияние PR из `development`) заходит на сервер по SSH и

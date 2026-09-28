@@ -3,7 +3,8 @@ from decimal import Decimal
 from typing import Any
 
 from django.core.files import File
-from django.core.management.base import BaseCommand
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError, CommandParser
 
 from products.models import Brand, Category, Product
 
@@ -109,9 +110,39 @@ PRODUCTS = [
 
 
 class Command(BaseCommand):
-    help = 'Наполняет каталог моковыми категориями, брендами и товарами (для разработки/демо).'
+    help = (
+        'Наполняет каталог моковыми категориями, брендами и товарами (для разработки/демо). '
+        'На боевом сервере (DEBUG=False) — только с --force; --deactivate скрывает демо-товары.'
+    )
+
+    def add_arguments(self, parser: CommandParser) -> None:
+        parser.add_argument(
+            '--force', action='store_true',
+            help=(
+                'Разрешить запуск при DEBUG=False (боевой сервер): '
+                'демо-товары появятся в витрине и их можно будет заказать.'
+            ),
+        )
+        parser.add_argument(
+            '--deactivate', action='store_true',
+            help=(
+                'Не создавать товары, а скрыть уже созданные демо-товары (is_active=False). '
+                'Категории и бренды остаются.'
+            ),
+        )
 
     def handle(self, *args: Any, **options: Any) -> None:
+        if options['deactivate']:
+            self._deactivate()
+            return
+
+        if not settings.DEBUG and not options['force']:
+            raise CommandError(
+                'Это боевой сервер (DEBUG=False): демо-товары появятся в витрине с ценами и остатком, '
+                'покупатели смогут их заказать. Если это осознанно (например, показ демо) — '
+                'запустите с --force, а после показа скройте их: seed_products --deactivate'
+            )
+
         categories = {}
         for name in CATEGORIES:
             category, _ = Category.objects.get_or_create(name=name)
@@ -151,4 +182,12 @@ class Command(BaseCommand):
             f'Готово: {len(CATEGORIES)} категорий, {len(BRANDS)} брендов, '
             f'{created} товаров создано, {updated} обновлено, '
             f'{images_attached} картинок добавлено (всего {len(PRODUCTS)}).',
+        ))
+
+    def _deactivate(self) -> None:
+        """Скрыть демо-товары (по их артикулам). Не удаляет: на товар могут ссылаться заказы."""
+        demo_skus = [sku for _name, sku, *_rest in PRODUCTS]
+        hidden = Product.objects.filter(sku__in=demo_skus, is_active=True).update(is_active=False)
+        self.stdout.write(self.style.SUCCESS(
+            f'Скрыто демо-товаров: {hidden}. Категории и бренды не тронуты.',
         ))
