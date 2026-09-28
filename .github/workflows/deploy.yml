@@ -1,0 +1,53 @@
+# Автодеплой: каждый push в production (в т.ч. слияние PR из development)
+# обновляет сервер на Lightsail. Можно запустить и вручную: вкладка Actions →
+# Deploy → Run workflow.
+#
+# Секреты репозитория (Settings → Secrets and variables → Actions):
+#   SSH_HOST — статический IP сервера
+#   SSH_USER — пользователь (ubuntu)
+#   SSH_KEY  — приватный ключ, чей .pub добавлен в ~/.ssh/authorized_keys на сервере
+#
+# На сервере проект должен быть заранее склонирован в ~/elektronik-kz
+# (ветка production) и лежать .env — см. README, раздел «Деплой».
+name: Deploy
+
+on:
+  push:
+    branches: [production]
+  workflow_dispatch:
+
+# Два деплоя одновременно не запускаются — второй ждёт первый.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Настроить SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Обновить код и перезапустить контейнеры
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" 'bash -s' <<'EOF'
+          set -euo pipefail
+          cd ~/elektronik-kz
+          git fetch origin production
+          # .env и прочие файлы из .gitignore reset не трогает.
+          git reset --hard origin/production
+          docker compose up -d --build --remove-orphans
+          docker image prune -f
+          docker compose ps
+          EOF

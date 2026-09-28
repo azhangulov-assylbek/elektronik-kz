@@ -20,9 +20,11 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Приложение поднимется на `http://localhost:8000/`, миграции применяются
-автоматически при старте контейнера `web`, база — PostgreSQL в контейнере `db`.
-Контейнер `web` работает с настройками `config.settings.prod` (`DEBUG=False`).
+Это прод-сборка — та же, что на сервере: Caddy (HTTPS, статика и картинки)
+→ gunicorn (`web`, настройки `config.settings.prod`, `DEBUG=False`) →
+PostgreSQL (`db`). Сайт откроется на `https://localhost/` — сертификат на
+localhost самоподписанный, браузер покажет предупреждение, это нормально.
+Миграции и `collectstatic` выполняются при старте контейнера `web`.
 
 Наполнить каталог демо-товарами (31 товар, 9 категорий, с картинками):
 
@@ -54,10 +56,13 @@ python manage.py runserver
 ```
 
 PostgreSQL для этого сценария не нужен. Если нужно проверить что-то на
-реальном Postgres с хоста — `docker compose up -d db` (порт 5432 опубликован)
+реальном Postgres с хоста — `docker compose up -d db` (порт 5432 опубликован только на 127.0.0.1)
 и запуск с `DJANGO_SETTINGS_MODULE=config.settings.prod`.
 
 ## REST API и JWT
+
+Примеры ниже — для локального `runserver` (порт 8000); в Docker/на сервере
+тот же путь на `https://<домен>/`.
 
 Документация (Swagger UI): `http://localhost:8000/api/docs/`
 Схема OpenAPI: `http://localhost:8000/api/schema/`
@@ -160,6 +165,47 @@ User.objects.create_user(email='seller@elektronik.kz', password='...', role=User
 запускается с `config.settings.development` (SQLite), в Docker — с
 `config.settings.prod` (PostgreSQL). Поэтому при слиянии `development` →
 `production` настройки БД не конфликтуют и SQLite в прод не попадает.
+
+## Деплой (AWS Lightsail)
+
+Сервер — Ubuntu на Lightsail с Docker; на нём работает тот же
+`docker-compose.yml`: Caddy сам получает и продлевает HTTPS-сертификат
+Let's Encrypt, раздаёт `/static/` и `/media/`, остальное проксирует в
+gunicorn. Postgres и gunicorn наружу не открыты.
+
+**Первичная настройка** (один раз):
+
+1. Lightsail: инстанс Ubuntu 24.04 (от 1 ГБ RAM), статический IP, в firewall
+   открыты только 22, 80, 443. На сервере — Docker и swap.
+2. DNS домена (у регистратора): A-записи `@` и `www` → статический IP.
+3. Доступ сервера к репозиторию — deploy key (только чтение).
+4. Клонировать ветку `production` в `~/elektronik-kz` и создать там `.env`:
+   ```
+   DJANGO_SECRET_KEY=<python3 -c "import secrets; print(secrets.token_urlsafe(50))">
+   SITE_DOMAIN=elektronik.kz
+   ALLOWED_HOSTS=elektronik.kz,www.elektronik.kz
+   POSTGRES_PASSWORD=<длинный случайный пароль>
+   # EMAIL_HOST=... — если не задан, письма пишутся в лог `web`, а не отправляются
+   ```
+5. `docker compose up -d --build`, затем
+   `docker compose exec web python manage.py createsuperuser`.
+
+**Автообновление** — `.github/workflows/deploy.yml`: каждый push в
+`production` (обычно слияние PR из `development`) заходит на сервер по SSH и
+выполняет `git reset --hard origin/production` + `docker compose up -d --build`.
+Запустить вручную — вкладка Actions → Deploy → Run workflow. Нужны секреты
+репозитория `SSH_HOST`, `SSH_USER`, `SSH_KEY` (ключ, чей `.pub` лежит в
+`~/.ssh/authorized_keys` на сервере). `.env` и данные (тома Docker) при
+деплое не затрагиваются.
+
+**Полезное на сервере:**
+
+```bash
+docker compose ps                    # состояние контейнеров
+docker compose logs -f web           # логи Django/gunicorn (и письма, если SMTP не настроен)
+docker compose logs -f caddy         # логи Caddy (получение сертификата)
+docker compose exec db pg_dump -U elektronik elektronik > backup.sql   # дамп базы
+```
 
 ## Тесты и линтеры
 
